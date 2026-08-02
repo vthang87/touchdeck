@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -44,17 +44,60 @@ jobs:
         working-directory: web/worker
         run: pnpm run build
 
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Gate deploy (skip without Cloudflare secrets)
+        id: gate
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -n "$CF_TOKEN" ]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::CLOUDFLARE_API_TOKEN not configured — skipping deploy"
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.gate.outputs.deploy == 'true'
+        uses: actions/checkout@v4
+
+      - name: Sync installer assets
+        if: steps.gate.outputs.deploy == 'true'
+        run: |
+          chmod +x scripts/sync-web-installer.sh
+          ./scripts/sync-web-installer.sh
+
+      - uses: pnpm/action-setup@v4
+        if: steps.gate.outputs.deploy == 'true'
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.deploy == 'true'
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: web/worker/pnpm-lock.yaml
+
+      - name: Install worker dependencies
+        if: steps.gate.outputs.deploy == 'true'
+        working-directory: web/worker
+        run: pnpm install --frozen-lockfile
+
       - name: Deploy production (main)
-        if: github.ref == 'refs/heads/main'
+        if: steps.gate.outputs.deploy == 'true' && github.ref == 'refs/heads/main'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: web/worker
-          command: deploy --var GITHUB_REPOSITORY:${{ github.repository }}
+          command: deploy --env="" --var GITHUB_REPOSITORY:${{ github.repository }}
 
       - name: Deploy staging (dev)
-        if: github.ref == 'refs/heads/dev'
+        if: steps.gate.outputs.deploy == 'true' && github.ref == 'refs/heads/dev'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
