@@ -19,8 +19,8 @@
 #define LV_MEM_CUSTOM_FREE(ptr) heap_caps_free(ptr)
 #define LV_MEM_CUSTOM_REALLOC(ptr, size) heap_caps_realloc(ptr, size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT)
 
-#define LV_DISP_DEF_REFR_PERIOD 30
-#define LV_INDEV_DEF_READ_PERIOD 20
+#define LV_DISP_DEF_REFR_PERIOD 16
+#define LV_INDEV_DEF_READ_PERIOD 15
 #define LV_TICK_CUSTOM 1
 #if LV_TICK_CUSTOM
 #define LV_TICK_CUSTOM_INCLUDE "Arduino.h"
@@ -67,7 +67,7 @@
 #define LV_USE_CHART 0
 #define LV_USE_KEYBOARD 0
 #define LV_USE_TABVIEW 0
-#define LV_USE_TILEVIEW 0
+#define LV_USE_TILEVIEW 1
 #define LV_USE_WIN 0
 #define LV_USE_MSGBOX 0
 #define LV_USE_SPAN 0

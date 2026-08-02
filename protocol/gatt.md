@@ -2,14 +2,14 @@
 
 Firmware is a thin device. The companion owns actions.
 
-**PROTOCOL_VERSION = 4**
+**PROTOCOL_VERSION = 4** (additive extensions below; no version bump)
 
 ## Principles
 
 - BLE GATT is the primary control channel.
 - Wi-Fi is for portal, OTA, and icon upload only.
 - Firmware does **not** emit HID media keys.
-- Tile presses carry an `action_id`; the companion maps that to OpenApp / Media / Volume / etc.
+- Tile presses carry an `action_id`; the companion maps that to OpenApp / Media / Volume / Keyboard / etc.
 
 ## UUIDs
 
@@ -33,10 +33,23 @@ Board → companion (Event characteristic):
 | Field | Type | Notes |
 |---|---|---|
 | `event` | string | Always `tile_press` |
-| `action_id` | string | Stable id from grid config (max 32 chars) |
+| `action_id` | string | Stable id from grid / media controls (max 32 chars) |
 | `t` | number | `millis()` on device |
 
-Legacy fields (`id`, `target`) may still be present during migration; companion prefers `action_id`.
+### Media control `action_id`s (page 0)
+
+| `action_id` | Companion |
+|---|---|
+| `media_play_pause` | Media play/pause key |
+| `media_next` | Next track |
+| `media_previous` | Previous track |
+| `media_seek_fwd` | Seek +10s |
+| `media_seek_back` | Seek −10s |
+| `media_rate_up` / `media_rate_down` | Playback speed ± step (0.75×…2×) |
+| `media_rate_1x` | Reset speed to 1× |
+| `volume_up` / `volume_down` / `mute` | Existing volume actions |
+
+Legacy fields (`id`, `target`) may still be present; companion prefers `action_id`.
 
 ## Command: host → board
 
@@ -48,40 +61,62 @@ JSON write to Command characteristic (max ~512 bytes):
 {"op":"brightness","pct":100}
 {"op":"enter_ota"}
 {"op":"ping"}
+{"op":"now_playing","title":"Song","artist":"Artist","playing":true,"pos_ms":120000,"dur_ms":240000,"app":"Music","rate_x100":100}
+{"op":"page","index":0}
+{"op":"pages","count":2}
 ```
 
-## Status
+| `op` | Notes |
+|---|---|
+| `now_playing` | Update Media page UI (+ clock now-playing line when `playing`). Fields: `title`, `artist`, `playing`, `pos_ms`, `dur_ms`, `app`, `rate_x100` (100 = 1×). Strings truncated on device. Empty title = idle. |
+| `page` | Switch pager to `index` (0 = media). Clamped to `page_count`. |
+| `pages` | Set total page count ∈ {2,3,4}. Page 0 is always Media; count−1 shortcut grids. Persisted in grid profile. |
+| `ping` | Keep-alive / RTT; board answers Status `pong`. |
 
-Board may notify:
+## Status
 
 ```json
 {"type":"hello","fw":"0.3.0","protocol":4,"gatt":true}
 {"type":"pong"}
 ```
 
-## Grid config
+## Deck pages
 
-Each tile stores:
+- **Total pages:** 2–4 (default **2**).
+- **Page 0:** fixed Media Now Playing UI (not tile-edited).
+- **Pages 1…N-1:** shortcut grids (`open_app` / `open_url` / `keyboard` macros).
 
-- `id`, `label`, `icon`, `color`, `action` (UI kind hint: `app` / `volume_up` / …)
-- `action_id` — required for companion routing when `action` needs the host
-
-Example:
+### Grid profile JSON
 
 ```json
 {
-  "id": "vscode",
-  "label": "VS Code",
-  "icon": "vscode",
-  "color": "#007ACC",
-  "action": "app",
-  "action_id": "open_vscode"
+  "rev": 1,
+  "page_count": 2,
+  "pages": [
+    {
+      "cols": 4,
+      "rows": 2,
+      "tiles": [
+        {
+          "id": "vscode",
+          "label": "VS Code",
+          "icon": "vscode",
+          "color": "#007ACC",
+          "action": "app",
+          "action_id": "open_vscode"
+        }
+      ]
+    }
+  ]
 }
 ```
 
-Companion SQLite `actions` table maps `action_id` → `{ kind, value, … }`.
+- `pages.length` must equal `page_count - 1`.
+- Legacy flat `{rev,cols,rows,tiles}` migrates to `page_count=2`, `pages[0]=…`.
+
+Companion SQLite `actions` maps `action_id` → `{ kind, value, … }`.
 
 ## OTA
 
-1. Companion writes `{"op":"enter_ota"}` (optional; board already has Wi-Fi when provisioned).
+1. Companion writes `{"op":"enter_ota"}` (optional).
 2. Firmware update over HTTP / ArduinoOTA / web installer — **not** over BLE.

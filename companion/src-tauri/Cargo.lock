@@ -4506,6 +4506,7 @@ name = "touchdeck-companion"
 version = "0.3.0"
 dependencies = [
  "btleplug",
+ "cc",
  "chrono",
  "core-foundation",
  "dirs",

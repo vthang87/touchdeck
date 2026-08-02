@@ -17,17 +17,17 @@ TouchDeck là bàn phím cảm ứng 7" (board **JC8048W550C**, ESP32-S3) dùng 
 ```mermaid
 flowchart LR
   touch[TouchDeck LCD + GT911] -->|GATT tile_press action_id| companion[TouchDeck Companion Tauri]
-  companion -->|open / volume / media| mac[macOS]
-  companion -->|GATT volume UI| touch
+  companion -->|open / volume / media / seek| mac[macOS]
+  companion -->|GATT now_playing + volume| touch
   browser[Chrome] -->|HTTP portal OTA icons| touch
 ```
 
 | Thành phần | Vai trò |
 |---|---|
-| **Firmware trên board** | UI LVGL, BLE GATT peripheral, Wi‑Fi portal / OTA / icon |
-| **TouchDeck Companion** (Tauri, macOS) | Scan/connect BLE, map `action_id` → mở app / volume / media / keyboard |
+| **Firmware trên board** | UI LVGL (Media + shortcuts), BLE GATT peripheral, Wi‑Fi portal / OTA / icon |
+| **TouchDeck Companion** (Tauri, macOS) | Scan/connect/auto-reconnect BLE, Now Playing → board, map `action_id` → app / volume / media |
 | **Config portal** | Wi‑Fi, Bluetooth pairing, idle, tên thiết bị |
-| **Grid editor** | Lưới nút + `action_id` (+ legacy target tùy chọn) |
+| **Grid editor** | Số trang (2–4) + lưới shortcut (`action_id`); trang Media không chỉnh bằng tile editor |
 | **Web installer** | Flash firmware qua USB (Chrome/Edge) |
 
 Kênh chính: **Bluetooth GATT**. Wi‑Fi chỉ còn portal / OTA / icon — không còn WebSocket launch.
@@ -35,7 +35,14 @@ Kênh chính: **Bluetooth GATT**. Wi‑Fi chỉ còn portal / OTA / icon — kh�
 
 ## 2. Màn hình trên desk
 
-Cấu hình hiện tại trên thiết bị: **5×2**, tên **Thang Dev**, volume hiển thị từ Mac.
+Thiết bị dùng **2–4 trang** (mặc định **2**):
+
+| Trang | Nội dung |
+|---|---|
+| **0 — Media** | Now Playing (title/artist tiếng Việt, progress, seek ±10s, tốc độ −/1x/+, transport, volume). Companion đẩy qua GATT. |
+| **1…N-1** | Lưới shortcut (mở app / URL / macro). Vuốt ngang hoặc chạm **dots** để đổi trang. |
+
+Vuốt ngang từ nút/tile **không** kích hoạt nút (firmware theo dõi khoảng cách kéo). Trang Media xám / gợi ý kết nối Companion khi chưa nối GATT. Trang đang xem được nhớ qua NVS.
 
 ![Màn hình home grid TouchDeck](images/home-grid.png)
 
@@ -48,7 +55,7 @@ Cấu hình hiện tại trên thiết bị: **5×2**, tên **Thang Dev**, volum
 ./scripts/capture-screenshot.sh 192.168.0.183
 ```
 
-**Ý nghĩa thanh trạng thái (góc phải):**
+**Ý nghĩa thanh trạng thái (góc phải, trang shortcut):**
 
 | Icon | Ý nghĩa |
 |---|---|
@@ -56,9 +63,6 @@ Cấu hình hiện tại trên thiết bị: **5×2**, tên **Thang Dev**, volum
 | Bluetooth | Xanh = GATT central đã nối; `pair` / `idle` / `off` |
 | ⇅ | Xanh = companion GATT linked; xám = chưa nối → tile host bị mờ |
 | Wi‑Fi | Xanh = STA; vàng = đang AP setup |
-
-Hàng trên: Vol − / Mute / Vol + / Telegram / Safari  
-Hàng dưới: iTerm / ChatGPT / Codex / Cursor / VS Code
 
 ---
 
@@ -144,9 +148,18 @@ Nếu tile **mờ**: Companion chưa nối BLE — Scan + Connect lại.
 
 ### 4.2 Volume & media
 
-Tất cả media/volume do Companion xử lý (không còn BLE HID trên board). Volume ± khoảng 3%, **không có HUD hệ thống** macOS. Mute / play / next / prev cần quyền **Accessibility**.
+Tất cả media/volume do Companion xử lý (không còn BLE HID trên board).
 
-### 4.3 Màn hình nghỉ (idle)
+- **Now Playing:** lấy từ session hệ thống (Safari/YouTube, Music, Spotify, …) qua MediaRemote/JXA — không chỉ Music/Spotify.
+- **Seek ±10s:** đặt vị trí phát; không nhảy next/prev khi seek lỗi.
+- **Tốc độ:** − / 1x / + (0.75×…2×) khi app hỗ trợ; Safari có thể cần bật *Allow JavaScript from Apple Events*.
+- Volume ± khoảng 3%, **không có HUD hệ thống**. Mute / play / next / prev / seek cần **Accessibility**.
+
+### 4.3 Đổi trang deck
+
+Vuốt ngang giữa Media ↔ shortcuts, hoặc chạm dots. Vuốt bắt đầu trên nút vẫn đổi trang và **không** bấm nút. Companion / portal **Grid** đặt **Total pages** 2–4.
+
+### 4.4 Màn hình nghỉ (idle)
 
 Mặc định (đổi được trong portal / Companion → Device):
 
@@ -159,9 +172,11 @@ Mặc định (đổi được trong portal / Companion → Device):
 
 Chạm để đánh thức. **Lần chạm wake từ đồng hồ/tắt màn không kích hoạt nút** — nhấc tay rồi chạm lần nữa mới bấm tile.
 
+Khi đang phát media, đồng hồ hiện thêm dòng **tên bài — nghệ sĩ** dưới ngày.
+
 Cỡ chữ đồng hồ: **Clock font size** (48 / 72 / 96 / 128 / 160 px).
 
-### 4.4 Cảnh báo duyệt Cursor / Codex
+### 4.5 Cảnh báo duyệt Cursor / Codex
 
 Chưa nằm trong MVP v4 (GATT). Bản Electron cũ (`archive/companion-electron/`) dùng WebSocket — xem [`approval-notifications.md`](approval-notifications.md) (legacy).
 
@@ -169,13 +184,15 @@ Chưa nằm trong MVP v4 (GATT). Bản Electron cũ (`archive/companion-electron
 
 ## 5. Tuỳ chỉnh lưới nút
 
-Mở http://touchdeck.local/grid:
+Mở http://touchdeck.local/grid (hoặc Companion → **Grid**):
 
-1. Chọn **Columns** / **Rows** (2–5 × 1–3)
-2. Mỗi ô: `label`, `icon`, `color`, `action`, **`action_id`**
-3. Action `app` có thể giữ legacy `target` (bundle/path) để gợi ý; Companion map theo `action_id`
-4. Upload PNG icon lên thẻ SD nếu cần
-5. **Save to device** — áp dụng ngay
+1. Chọn **Total pages** (2–4; trang 0 luôn là Media)
+2. Chọn **Edit shortcut page** cần sửa
+3. Chọn **Columns** / **Rows** (2–5 × 1–3)
+4. Mỗi ô: `label`, `icon`, `color`, `action`, **`action_id`**
+5. Action `app` có thể giữ legacy `target` (bundle/path) để gợi ý; Companion map theo `action_id`
+6. Upload PNG icon lên thẻ SD nếu cần
+7. **Save** — áp dụng ngay, không reboot
 
 Companion tab **Profile** chỉnh map `action_id` → bundle / media / keyboard. Tab **Grid** / **Device** chỉnh board qua HTTP (cùng API portal).
 
@@ -198,8 +215,12 @@ Mật khẩu OTA mặc định: `touchdeck`. Chi tiết: [`ota-process.md`](ota-
 | Hiện tượng | Việc kiểm tra |
 |---|---|
 | Nút mờ / không mở app | Companion đã Connect BLE? Icon BT xanh? |
+| BLE rớt / treo “Linked” | Restart Companion — bản mới auto-reconnect (re-scan, không block disconnect). Xem Log: `link cleared` → `Attempting reconnect` |
+| Now Playing trống | Có media trên Control Center? Companion Log có dòng `Now Playing:`? |
 | Mute / media không chạy | Accessibility cho Companion? |
+| Rate không đổi (Safari) | Safari → Develop / settings: Allow JavaScript from Apple Events |
 | Volume không có HUD | Đúng hành vi v4 (không BLE HID) |
+| Vuốt bị bấm nút | Flash firmware mới (drag gate) |
 | Dim thành tắt hẳn | PWM backlight 1 kHz; **Dim brightness %** ≥ ~20 |
 | Wake bị bấm nhầm tile | Đã chặn; nhấc tay rồi chạm lại |
 | Portal không mở | Thử IP hoặc AP setup |

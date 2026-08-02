@@ -109,8 +109,10 @@ static const char kGridHtml[] PROGMEM = R"HTML(
 </head>
 <body>
   <h1>Grid editor</h1>
-  <p><a href="/">Wi-Fi setup</a> · Changes apply on device without reboot.</p>
+  <p><a href="/">Wi-Fi setup</a> · Page 0 is Media (fixed). Edit shortcut pages only. Changes apply without reboot.</p>
   <div class="row">
+    <div><label>Total pages (Media + shortcuts)</label><br/><select id="pagecount"></select></div>
+    <div><label>Edit shortcut page</label><br/><select id="editpage"></select></div>
     <div><label>Columns</label><br/><select id="cols"></select></div>
     <div><label>Rows</label><br/><select id="rows"></select></div>
     <button id="save">Save to device</button>
@@ -144,12 +146,24 @@ const PRESETS=[
   {name:"Messages",icon:"messages",color:"#16A34A",value:"com.apple.MobileSMS"},
   {name:"Music",icon:"music",color:"#BE123C",value:"com.apple.Music"},
 ];
-let grid={rev:1,cols:4,rows:2,tiles:[]};
+let deck={rev:1,page_count:2,pages:[{cols:4,rows:2,tiles:[]}]};
+let editIdx=0; // index into deck.pages (shortcut page 0 = device page 1)
 let sdIcons=[];
 let sdReady=false;
 function el(t,a={},c=[]){const n=document.createElement(t);Object.entries(a).forEach(([k,v])=>{if(k==="text")n.textContent=v;else if(k==="html")n.innerHTML=v;else n.setAttribute(k,v)});c.forEach(x=>n.appendChild(x));return n}
 function fillSelect(sel,from,to,cur){sel.innerHTML="";for(let i=from;i<=to;i++){const o=el("option",{value:String(i),text:String(i)});if(i===cur)o.selected=true;sel.appendChild(o)}}
+function emptyPage(){return {cols:4,rows:2,tiles:[]};}
+function ensureDeckShape(){
+  let pc=deck.page_count|0; if(pc<2)pc=2; if(pc>4)pc=4; deck.page_count=pc;
+  if(!Array.isArray(deck.pages)) deck.pages=[];
+  const want=pc-1;
+  while(deck.pages.length<want) deck.pages.push(emptyPage());
+  deck.pages=deck.pages.slice(0,want);
+  if(editIdx>=deck.pages.length) editIdx=Math.max(0,deck.pages.length-1);
+}
+function activeGrid(){ ensureDeckShape(); return deck.pages[editIdx]; }
 function ensureTiles(){
+  const grid=activeGrid();
   const n=grid.cols*grid.rows;
   while(grid.tiles.length<n){
     const i=grid.tiles.length;
@@ -157,7 +171,21 @@ function ensureTiles(){
   }
   grid.tiles=grid.tiles.slice(0,n);
 }
+function fillEditPageSelect(){
+  const sel=document.getElementById("editpage");
+  sel.innerHTML="";
+  ensureDeckShape();
+  deck.pages.forEach((_,i)=>{
+    const o=el("option",{value:String(i),text:"Shortcuts "+(i+1)+" (device page "+(i+1)+")"});
+    if(i===editIdx)o.selected=true;
+    sel.appendChild(o);
+  });
+}
 function render(){
+  ensureDeckShape();
+  fillSelect(document.getElementById("pagecount"),2,4,deck.page_count);
+  fillEditPageSelect();
+  const grid=activeGrid();
   fillSelect(document.getElementById("cols"),2,5,grid.cols);
   fillSelect(document.getElementById("rows"),1,3,grid.rows);
   ensureTiles();
@@ -278,29 +306,51 @@ async function load(){
   await loadIcons();
   const r=await fetch("/api/grid");
   if(!r.ok){msg("Failed to load grid",false); return;}
-  grid=await r.json();
+  const raw=await r.json();
+  if(Array.isArray(raw.pages)&&raw.pages.length){
+    deck={rev:raw.rev||1,page_count:raw.page_count||(raw.pages.length+1),pages:raw.pages};
+  }else{
+    deck={rev:raw.rev||1,page_count:2,pages:[{cols:raw.cols||4,rows:raw.rows||2,tiles:raw.tiles||[]}]};
+  }
+  editIdx=0;
   render();
-  msg("Loaded rev "+grid.rev,true);
+  msg("Loaded rev "+deck.rev+" · "+deck.page_count+" pages",true);
 }
 async function save(){
+  ensureDeckShape();
   ensureTiles();
-  grid.rev=(grid.rev||0)+1;
-  const body="json="+encodeURIComponent(JSON.stringify(grid));
+  deck.rev=(deck.rev||0)+1;
+  const body="json="+encodeURIComponent(JSON.stringify(deck));
   const r=await fetch("/api/grid",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body});
   const j=await r.json().catch(()=>({}));
   if(!r.ok){msg(j.error||"Save failed",false); return;}
-  grid=j.grid||grid;
+  const raw=j.grid||deck;
+  if(Array.isArray(raw.pages)&&raw.pages.length){
+    deck={rev:raw.rev||deck.rev,page_count:raw.page_count||deck.page_count,pages:raw.pages};
+  }else{deck=raw;}
   render();
-  msg("Saved rev "+grid.rev,true);
+  msg("Saved rev "+deck.rev,true);
 }
 async function reset(){
   const r=await fetch("/api/grid/reset",{method:"POST"});
   const j=await r.json().catch(()=>({}));
   if(!r.ok){msg(j.error||"Reset failed",false); return;}
-  grid=j.grid; render(); msg("Reset to defaults",true);
+  const raw=j.grid;
+  if(Array.isArray(raw.pages)&&raw.pages.length){
+    deck={rev:raw.rev||1,page_count:raw.page_count||2,pages:raw.pages};
+  }else{
+    deck={rev:raw.rev||1,page_count:2,pages:[{cols:raw.cols||4,rows:raw.rows||2,tiles:raw.tiles||[]}]};
+  }
+  editIdx=0; render(); msg("Reset to defaults",true);
 }
-document.getElementById("cols").onchange=e=>{grid.cols=+e.target.value; render()};
-document.getElementById("rows").onchange=e=>{grid.rows=+e.target.value; render()};
+document.getElementById("pagecount").onchange=e=>{
+  deck.page_count=+e.target.value;
+  ensureDeckShape();
+  render();
+};
+document.getElementById("editpage").onchange=e=>{editIdx=+e.target.value; render();};
+document.getElementById("cols").onchange=e=>{activeGrid().cols=+e.target.value; render()};
+document.getElementById("rows").onchange=e=>{activeGrid().rows=+e.target.value; render()};
 document.getElementById("save").onclick=save;
 document.getElementById("reload").onclick=load;
 document.getElementById("reset").onclick=reset;
@@ -438,7 +488,7 @@ static void sendJson(int code, const String& json) {
 
 static void handleApiGridGet() {
   String json;
-  if (!profileStore.serialize(profileStore.current(), json)) {
+  if (!profileStore.serialize(profileStore.profile(), json)) {
     sendJson(500, "{\"error\":\"serialize failed\"}");
     return;
   }
@@ -453,13 +503,13 @@ static void handleApiGridPost() {
     body = s_server->arg("plain");
   }
   char err[64];
-  GridConfig cfg;
-  if (!profileStore.parse(body.c_str(), body.length(), cfg, err, sizeof(err))) {
+  DeckProfile profile;
+  if (!profileStore.parse(body.c_str(), body.length(), profile, err, sizeof(err))) {
     String resp = String("{\"error\":\"") + err + "\"}";
     sendJson(400, resp);
     return;
   }
-  if (!profileStore.save(cfg)) {
+  if (!profileStore.save(profile)) {
     sendJson(500, "{\"error\":\"save failed\"}");
     return;
   }
@@ -468,7 +518,7 @@ static void handleApiGridPost() {
     return;
   }
   String json;
-  profileStore.serialize(profileStore.current(), json);
+  profileStore.serialize(profileStore.profile(), json);
   sendJson(200, String("{\"ok\":true,\"grid\":") + json + "}");
 }
 
@@ -604,14 +654,14 @@ static void handleApiSettingsPost() {
 }
 
 static void handleApiGridReset() {
-  GridConfig cfg;
-  if (!profileStore.resetToDefault(cfg)) {
+  DeckProfile profile;
+  if (!profileStore.resetToDefault(profile)) {
     sendJson(500, "{\"error\":\"reset failed\"}");
     return;
   }
   uiManagerReloadGrid();
   String json;
-  profileStore.serialize(profileStore.current(), json);
+  profileStore.serialize(profileStore.profile(), json);
   sendJson(200, String("{\"ok\":true,\"grid\":") + json + "}");
 }
 

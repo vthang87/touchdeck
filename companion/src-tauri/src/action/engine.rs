@@ -9,8 +9,8 @@ impl ActionEngine {
     Self
   }
 
-  /// Returns Some(volume) when the board UI should be synced.
-  pub async fn execute(&self, action: &ActionRecord) -> Result<Option<VolumeState>, String> {
+  /// Synchronous action execution (safe to call from `spawn_blocking`).
+  pub fn execute_blocking(&self, action: &ActionRecord) -> Result<Option<VolumeState>, String> {
     match action.kind {
       ActionKind::OpenApp => {
         platform::open_app(&action.value)?;
@@ -21,9 +21,24 @@ impl ActionEngine {
         Ok(None)
       }
       ActionKind::Media => {
-        if let Err(e) = virtual_keyboard::media(&action.value) {
+        let op = action.value.as_str();
+        if op == "seek_fwd"
+          || op == "media_seek_fwd"
+          || op == "seek_back"
+          || op == "media_seek_back"
+          || op == "rate_up"
+          || op == "media_rate_up"
+          || op == "rate_down"
+          || op == "media_rate_down"
+          || op == "rate_1x"
+          || op == "media_rate_1x"
+        {
+          platform::media_key(op)?;
+          return Ok(None);
+        }
+        if let Err(e) = virtual_keyboard::media(op) {
           tracing::warn!("virtual keyboard media failed ({e}), falling back");
-          platform::media_key(&action.value)?;
+          platform::media_key(op)?;
         }
         Ok(None)
       }
@@ -61,5 +76,10 @@ impl ActionEngine {
         Ok(None)
       }
     }
+  }
+
+  /// Returns Some(volume) when the board UI should be synced.
+  pub async fn execute(&self, action: &ActionRecord) -> Result<Option<VolumeState>, String> {
+    self.execute_blocking(action)
   }
 }

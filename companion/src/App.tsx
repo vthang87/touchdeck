@@ -32,9 +32,11 @@ export default function App() {
   const [scanning, setScanning] = useState(false);
   const [connected, setConnected] = useState(false);
   const [connectedId, setConnectedId] = useState<string | null>(null);
+  const [connectedName, setConnectedName] = useState<string | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
   const [autoReconnect, setAutoReconnect] = useState(true);
   const [lastId, setLastId] = useState<string | null>(null);
+  const [lastName, setLastName] = useState<string | null>(null);
   const [actions, setActions] = useState<ActionRecord[]>([]);
   const [logs, setLogs] = useState<LogLine[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -87,16 +89,31 @@ export default function App() {
     invoke<{
       connected: boolean;
       id?: string | null;
+      name?: string | null;
       lastId?: string | null;
+      lastName?: string | null;
       autoReconnect?: boolean;
       reconnecting?: boolean;
     }>("ble_status")
       .then((s) => {
         setConnected(!!s.connected);
         setConnectedId(s.id ?? null);
+        setConnectedName(s.name ?? s.lastName ?? null);
         setLastId(s.lastId ?? s.id ?? null);
+        setLastName(s.lastName ?? s.name ?? null);
         setAutoReconnect(s.autoReconnect !== false);
         setReconnecting(!!s.reconnecting);
+        const seedId = s.id ?? s.lastId ?? null;
+        const seedName = s.name ?? s.lastName ?? "TouchDeck";
+        if (seedId) {
+          setDevices((prev) =>
+            prev.some((d) => d.id === seedId)
+              ? prev.map((d) =>
+                  d.id === seedId && seedName ? { ...d, name: seedName } : d,
+                )
+              : [{ id: seedId, name: seedName || "TouchDeck" }, ...prev],
+          );
+        }
       })
       .catch(() => undefined);
 
@@ -107,15 +124,33 @@ export default function App() {
     listen<{
       connected: boolean;
       id?: string | null;
+      name?: string | null;
       lastId?: string | null;
+      lastName?: string | null;
       autoReconnect?: boolean;
       reconnecting?: boolean;
     }>("ble-status", (ev) => {
-      setConnected(!!ev.payload.connected);
-      setConnectedId(ev.payload.id ?? null);
-      if (ev.payload.lastId !== undefined) setLastId(ev.payload.lastId ?? null);
-      if (ev.payload.autoReconnect !== undefined) setAutoReconnect(!!ev.payload.autoReconnect);
-      setReconnecting(!!ev.payload.reconnecting);
+      const p = ev.payload;
+      setConnected(!!p.connected);
+      setConnectedId(p.id ?? null);
+      if (p.name !== undefined) setConnectedName(p.name ?? null);
+      else if (p.lastName !== undefined) setConnectedName(p.lastName ?? null);
+      if (p.lastId !== undefined) setLastId(p.lastId ?? null);
+      if (p.lastName !== undefined) setLastName(p.lastName ?? null);
+      if (p.autoReconnect !== undefined) setAutoReconnect(!!p.autoReconnect);
+      setReconnecting(!!p.reconnecting);
+      const seedId = p.connected ? p.id ?? null : p.lastId ?? p.id ?? null;
+      const seedName = p.name ?? p.lastName ?? "TouchDeck";
+      if (seedId && (p.connected || p.reconnecting)) {
+        setDevices((prev) => {
+          if (prev.some((d) => d.id === seedId)) {
+            return prev.map((d) =>
+              d.id === seedId && seedName ? { ...d, name: seedName } : d,
+            );
+          }
+          return [{ id: seedId, name: seedName || "TouchDeck" }, ...prev];
+        });
+      }
     }).then((u) => unsubs.push(u));
     return () => {
       clearInterval(timer);
@@ -141,9 +176,14 @@ export default function App() {
   async function onConnect(id: string) {
     setError(null);
     try {
+      const known = devices.find((d) => d.id === id);
       await invoke("ble_connect", { id });
       setConnected(true);
       setConnectedId(id);
+      if (known?.name) {
+        setConnectedName(known.name);
+        setLastName(known.name);
+      }
     } catch (e) {
       setError(String(e));
     }
@@ -390,11 +430,22 @@ export default function App() {
             </p>
           )}
           <ul className="list">
-            {devices.length === 0 && <li className="muted">No devices yet — press Scan.</li>}
+            {devices.length === 0 && (
+              <li className="muted">
+                {connected
+                  ? `Linked${connectedName ? ` · ${connectedName}` : connectedId ? ` · ${connectedId.slice(0, 8)}` : ""}`
+                  : "No devices yet — press Scan."}
+              </li>
+            )}
             {devices.map((d) => (
               <li key={d.id}>
                 <div>
-                  <strong>{d.name}</strong>
+                  <strong>
+                    {d.name ||
+                      (connectedId === d.id ? connectedName : null) ||
+                      (lastId === d.id ? lastName : null) ||
+                      "TouchDeck"}
+                  </strong>
                   <div className="muted mono">{d.id}</div>
                 </div>
                 <button disabled={connected && connectedId === d.id} onClick={() => onConnect(d.id)}>

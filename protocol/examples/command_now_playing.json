@@ -1,0 +1,10 @@
+{
+  "op": "now_playing",
+  "title": "Example Song",
+  "artist": "Example Artist",
+  "playing": true,
+  "pos_ms": 65000,
+  "dur_ms": 210000,
+  "app": "Music",
+  "rate_x100": 100
+}

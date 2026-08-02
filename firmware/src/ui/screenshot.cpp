@@ -9,6 +9,7 @@
 #include "system/idle_manager.h"
 #include "ui/screens/clock_screen.h"
 #include "ui/screens/home_grid_screen.h"
+#include "ui/screens/workspace_pager.h"
 
 namespace {
 
@@ -62,7 +63,10 @@ bool uiScreenshotCaptureBmp(uint8_t** out_bmp, size_t* out_len) {
     return false;
   }
 
-  lv_obj_t* scr = homeGridScreenRoot();
+  lv_obj_t* scr = workspacePagerRoot();
+  if (!scr) {
+    scr = homeGridScreenRoot();
+  }
   if (!scr) {
     scr = lv_scr_act();
   } else if (lv_scr_act() != scr) {

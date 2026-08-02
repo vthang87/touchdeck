@@ -15,12 +15,18 @@ pub fn media(op: &str) -> Result<(), String> {
   }
   let mut enigo = Enigo::new(&Settings::default()).map_err(|e| e.to_string())?;
   let key = match op {
-    "play_pause" | "playpause" => Key::MediaPlayPause,
-    "next" => Key::MediaNextTrack,
-    "previous" | "prev" => Key::MediaPrevTrack,
+    "play_pause" | "playpause" | "media_play_pause" => Key::MediaPlayPause,
+    "next" | "media_next" => Key::MediaNextTrack,
+    "previous" | "prev" | "media_previous" => Key::MediaPrevTrack,
     "volume_up" => Key::VolumeUp,
     "volume_down" => Key::VolumeDown,
     "mute" => Key::VolumeMute,
+    "seek_fwd" | "media_seek_fwd" | "seek_back" | "media_seek_back" => {
+      return Err(format!("seek via enigo unsupported; use platform: {op}"));
+    }
+    "rate_up" | "media_rate_up" | "rate_down" | "media_rate_down" | "rate_1x" | "media_rate_1x" => {
+      return Err(format!("rate via enigo unsupported; use platform: {op}"));
+    }
     _ => return Err(format!("unknown media key: {op}")),
   };
   enigo.key(key, Direction::Click).map_err(|e| e.to_string())?;

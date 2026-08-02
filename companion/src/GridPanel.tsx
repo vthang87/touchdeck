@@ -13,11 +13,16 @@ type GridTile = {
   target?: TileTarget;
 };
 
-type GridConfig = {
-  rev: number;
+type ShortcutPage = {
   cols: number;
   rows: number;
   tiles: GridTile[];
+};
+
+type DeckProfile = {
+  rev: number;
+  page_count: number;
+  pages: ShortcutPage[];
 };
 
 const ACTIONS = [
@@ -126,11 +131,38 @@ function emptyTile(i: number): GridTile {
   };
 }
 
-function ensureTiles(grid: GridConfig): GridConfig {
-  const n = grid.cols * grid.rows;
-  const tiles = [...grid.tiles];
+function emptyPage(): ShortcutPage {
+  return { cols: 4, rows: 2, tiles: [] };
+}
+
+function ensureTiles(page: ShortcutPage): ShortcutPage {
+  const n = page.cols * page.rows;
+  const tiles = [...page.tiles];
   while (tiles.length < n) tiles.push(emptyTile(tiles.length));
-  return { ...grid, tiles: tiles.slice(0, n) };
+  return { ...page, tiles: tiles.slice(0, n) };
+}
+
+function normalizeDeck(raw: Partial<DeckProfile> & { cols?: number; rows?: number; tiles?: GridTile[] }): DeckProfile {
+  if (Array.isArray(raw.pages) && raw.pages.length > 0) {
+    let page_count = raw.page_count ?? raw.pages.length + 1;
+    if (page_count < 2) page_count = 2;
+    if (page_count > 4) page_count = 4;
+    const want = page_count - 1;
+    const pages = raw.pages.slice(0, want).map(ensureTiles);
+    while (pages.length < want) pages.push(ensureTiles(emptyPage()));
+    return { rev: raw.rev ?? 1, page_count, pages };
+  }
+  return {
+    rev: raw.rev ?? 1,
+    page_count: 2,
+    pages: [
+      ensureTiles({
+        cols: raw.cols ?? 4,
+        rows: raw.rows ?? 2,
+        tiles: raw.tiles ?? [],
+      }),
+    ],
+  };
 }
 
 type Props = {
@@ -139,25 +171,24 @@ type Props = {
 };
 
 export default function GridPanel({ host, onLog }: Props) {
-  const [grid, setGrid] = useState<GridConfig>({ rev: 1, cols: 4, rows: 2, tiles: [] });
+  const [deck, setDeck] = useState<DeckProfile>({ rev: 1, page_count: 2, pages: [emptyPage()] });
+  const [editIdx, setEditIdx] = useState(0);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const [dragFrom, setDragFrom] = useState<number | null>(null);
+
+  const page = deck.pages[Math.min(editIdx, Math.max(0, deck.pages.length - 1))] ?? emptyPage();
 
   const load = useCallback(async () => {
     setBusy(true);
     setMsg(null);
     try {
-      const raw = (await boardRequest("/api/grid", { host })) as GridConfig;
-      const next = ensureTiles({
-        rev: raw.rev ?? 1,
-        cols: raw.cols ?? 4,
-        rows: raw.rows ?? 2,
-        tiles: raw.tiles ?? [],
-      });
-      setGrid(next);
-      setMsg({ text: `Loaded rev ${next.rev}`, ok: true });
-      onLog?.("info", `Grid loaded rev ${next.rev}`);
+      const raw = (await boardRequest("/api/grid", { host })) as Record<string, unknown>;
+      const next = normalizeDeck(raw as never);
+      setDeck(next);
+      setEditIdx(0);
+      setMsg({ text: `Loaded rev ${next.rev} · ${next.page_count} pages`, ok: true });
+      onLog?.("info", `Deck loaded rev ${next.rev} pages=${next.page_count}`);
     } catch (e) {
       setMsg({ text: String(e), ok: false });
       onLog?.("error", `Grid load failed: ${e}`);
@@ -170,11 +201,35 @@ export default function GridPanel({ host, onLog }: Props) {
     void load();
   }, [load]);
 
-  function updateTile(idx: number, patch: Partial<GridTile>) {
-    setGrid((g) => {
-      const tiles = g.tiles.map((t, i) => (i === idx ? { ...t, ...patch } : t));
-      return { ...g, tiles };
+  function updatePage(patch: Partial<ShortcutPage>) {
+    setDeck((d) => {
+      const pages = d.pages.map((p, i) => (i === editIdx ? ensureTiles({ ...p, ...patch }) : p));
+      return { ...d, pages };
     });
+  }
+
+  function updateTile(idx: number, patch: Partial<GridTile>) {
+    setDeck((d) => {
+      const pages = d.pages.map((p, pi) => {
+        if (pi !== editIdx) return p;
+        const tiles = p.tiles.map((t, i) => (i === idx ? { ...t, ...patch } : t));
+        return ensureTiles({ ...p, tiles });
+      });
+      return { ...d, pages };
+    });
+  }
+
+  function setPageCount(count: number) {
+    setDeck((d) => {
+      let page_count = count;
+      if (page_count < 2) page_count = 2;
+      if (page_count > 4) page_count = 4;
+      const want = page_count - 1;
+      const pages = [...d.pages];
+      while (pages.length < want) pages.push(ensureTiles(emptyPage()));
+      return { ...d, page_count, pages: pages.slice(0, want).map(ensureTiles) };
+    });
+    setEditIdx((i) => Math.min(i, Math.max(0, count - 2)));
   }
 
   function applyPreset(idx: number, name: string) {
@@ -193,28 +248,36 @@ export default function GridPanel({ host, onLog }: Props) {
 
   function moveTile(from: number, to: number) {
     if (from === to) return;
-    setGrid((g) => {
-      const tiles = [...g.tiles];
-      const [item] = tiles.splice(from, 1);
-      tiles.splice(to, 0, item);
-      return { ...g, tiles };
+    setDeck((d) => {
+      const pages = d.pages.map((p, pi) => {
+        if (pi !== editIdx) return p;
+        const tiles = [...p.tiles];
+        const [item] = tiles.splice(from, 1);
+        tiles.splice(to, 0, item);
+        return { ...p, tiles };
+      });
+      return { ...d, pages };
     });
   }
 
   async function save() {
     setBusy(true);
-    const next = ensureTiles({ ...grid, rev: (grid.rev || 0) + 1 });
+    const next: DeckProfile = {
+      ...deck,
+      rev: (deck.rev || 0) + 1,
+      pages: deck.pages.map(ensureTiles),
+    };
     try {
       const body = "json=" + encodeURIComponent(JSON.stringify(next));
       const j = (await boardRequest("/api/grid", {
         host,
         method: "POST",
         body,
-      })) as { grid?: GridConfig };
-      const saved = ensureTiles(j.grid || next);
-      setGrid(saved);
+      })) as { grid?: Record<string, unknown> };
+      const saved = normalizeDeck((j.grid || next) as never);
+      setDeck(saved);
       setMsg({ text: `Saved rev ${saved.rev}`, ok: true });
-      onLog?.("info", `Grid saved rev ${saved.rev}`);
+      onLog?.("info", `Deck saved rev ${saved.rev} pages=${saved.page_count}`);
     } catch (e) {
       setMsg({ text: String(e), ok: false });
       onLog?.("error", `Grid save failed: ${e}`);
@@ -229,11 +292,13 @@ export default function GridPanel({ host, onLog }: Props) {
       const j = (await boardRequest("/api/grid/reset", {
         host,
         method: "POST",
-      })) as { grid?: GridConfig };
+      })) as { grid?: Record<string, unknown> };
       if (!j.grid) throw new Error("No grid in response");
-      setGrid(ensureTiles(j.grid));
+      const saved = normalizeDeck(j.grid as never);
+      setDeck(saved);
+      setEditIdx(0);
       setMsg({ text: "Reset to defaults", ok: true });
-      onLog?.("info", "Grid reset to defaults");
+      onLog?.("info", "Deck reset to defaults");
     } catch (e) {
       setMsg({ text: String(e), ok: false });
       onLog?.("error", `Grid reset failed: ${e}`);
@@ -246,18 +311,39 @@ export default function GridPanel({ host, onLog }: Props) {
     <section className="panel">
       <h2>Grid</h2>
       <p className="hint" style={{ marginTop: 0 }}>
-        Edit tiles on the board. Set <code>action_id</code> to match Profile mappings. Drag ⋮⋮ to
-        reorder, then Save grid.
+        Page 0 is Media (fixed UI). Edit shortcut pages below. Match <code>action_id</code> to Profile
+        mappings.
       </p>
 
       <div className="row" style={{ justifyContent: "flex-start" }}>
         <label className="inline-field">
+          Total pages
+          <select
+            value={deck.page_count}
+            onChange={(e) => setPageCount(Number(e.target.value))}
+          >
+            {[2, 3, 4].map((n) => (
+              <option key={n} value={n}>
+                {n} (Media + {n - 1} grid{n > 2 ? "s" : ""})
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="inline-field">
+          Edit shortcut
+          <select value={editIdx} onChange={(e) => setEditIdx(Number(e.target.value))}>
+            {deck.pages.map((_, i) => (
+              <option key={i} value={i}>
+                Shortcuts {i + 1} (device page {i + 1})
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="inline-field">
           Columns
           <select
-            value={grid.cols}
-            onChange={(e) =>
-              setGrid((g) => ensureTiles({ ...g, cols: Number(e.target.value) }))
-            }
+            value={page.cols}
+            onChange={(e) => updatePage({ cols: Number(e.target.value) })}
           >
             {[2, 3, 4, 5].map((n) => (
               <option key={n} value={n}>
@@ -269,10 +355,8 @@ export default function GridPanel({ host, onLog }: Props) {
         <label className="inline-field">
           Rows
           <select
-            value={grid.rows}
-            onChange={(e) =>
-              setGrid((g) => ensureTiles({ ...g, rows: Number(e.target.value) }))
-            }
+            value={page.rows}
+            onChange={(e) => updatePage({ rows: Number(e.target.value) })}
           >
             {[1, 2, 3].map((n) => (
               <option key={n} value={n}>
@@ -285,7 +369,7 @@ export default function GridPanel({ host, onLog }: Props) {
           Reload
         </button>
         <button type="button" onClick={() => void save()} disabled={busy}>
-          Save grid
+          Save deck
         </button>
         <button type="button" className="danger" onClick={() => void reset()} disabled={busy}>
           Reset defaults
@@ -295,9 +379,9 @@ export default function GridPanel({ host, onLog }: Props) {
 
       <div
         className="tile-grid"
-        style={{ gridTemplateColumns: `repeat(${grid.cols}, minmax(160px, 1fr))` }}
+        style={{ gridTemplateColumns: `repeat(${page.cols}, minmax(160px, 1fr))` }}
       >
-        {grid.tiles.map((t, idx) => (
+        {page.tiles.map((t, idx) => (
           <div
             key={`${t.id}-${idx}`}
             className={`tile-card${dragFrom === idx ? " dragging" : ""}`}

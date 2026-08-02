@@ -12,6 +12,13 @@ fn main() {
         plist.display()
       );
     }
+
+    println!("cargo:rerun-if-changed=src/now_playing_mr.m");
+    cc::Build::new()
+      .file("src/now_playing_mr.m")
+      .flag("-fobjc-arc")
+      .compile("now_playing_mr");
+    println!("cargo:rustc-link-lib=framework=Foundation");
   }
   tauri_build::build()
 }

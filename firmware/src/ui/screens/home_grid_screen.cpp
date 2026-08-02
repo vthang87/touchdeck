@@ -14,6 +14,7 @@
 #include "system/idle_manager.h"
 #include "ble/ble_manager.h"
 #include "ui/icons/icon_link_arrows.h"
+#include "ui/screens/workspace_pager.h"
 
 namespace {
 
@@ -220,12 +221,20 @@ void updateStatus() {
   updateHeaderClock();
   updateConnStatus();
   if (s_status) {
-    lv_label_set_text(s_status, "edit: touchdeck.local/grid");
+    lv_label_set_text(s_status, "edit shortcuts | swipe for media");
   }
 }
 
+uint32_t s_last_tile_ms = 0;
+char s_last_tile_id[GRID_ID_MAX + 1] = {};
+constexpr uint32_t kTileDebounceMs = 180;
+
 void onTilePressed(lv_event_t* e) {
-  if (lv_event_get_code(e) != LV_EVENT_PRESSED) {
+  // Drag-aware gate: horizontal swipe from a tile changes page and kills the click.
+  if (workspacePagerTouchGate(e)) {
+    return;
+  }
+  if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
     return;
   }
   if (!idleManagerAllowTilePress()) {
@@ -240,6 +249,15 @@ void onTilePressed(lv_event_t* e) {
     Serial.printf("[UI] tile %s disabled — companion not connected\n", tile.id);
     return;
   }
+  const uint32_t now = millis();
+  if (s_last_tile_id[0] && strcmp(s_last_tile_id, tile.id) == 0 &&
+      (now - s_last_tile_ms) < kTileDebounceMs) {
+    return;
+  }
+  s_last_tile_ms = now;
+  strncpy(s_last_tile_id, tile.id, GRID_ID_MAX);
+  s_last_tile_id[GRID_ID_MAX] = '\0';
+
   Serial.printf("[UI] tile %s action=%s\n", tile.id, tileActionToString(tile.action));
 
   switch (tile.action) {
@@ -308,8 +326,11 @@ bool buildTilesLocked() {
     lv_obj_set_style_border_width(btn, 1, 0);
     lv_obj_set_style_border_color(btn, lv_color_hex(0x27354D), 0);
     lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_flag(btn, LV_OBJ_FLAG_GESTURE_BUBBLE);
     lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(btn, onTilePressed, LV_EVENT_PRESSED, reinterpret_cast<void*>(static_cast<uintptr_t>(i)));
+    lv_obj_add_event_cb(btn, onTilePressed, LV_EVENT_PRESSING, reinterpret_cast<void*>(static_cast<uintptr_t>(i)));
+    lv_obj_add_event_cb(btn, onTilePressed, LV_EVENT_CLICKED, reinterpret_cast<void*>(static_cast<uintptr_t>(i)));
 
     if (custom) {
       lv_obj_t* img = lv_img_create(btn);
@@ -348,18 +369,24 @@ bool buildTilesLocked() {
 }  // namespace
 
 bool homeGridScreenCreate() {
-  s_cfg = profileStore.current();
+  return homeGridScreenCreateOn(lv_scr_act());
+}
+
+bool homeGridScreenCreateOn(lv_obj_t* parent) {
+  if (!parent) {
+    return false;
+  }
+  s_cfg = profileStore.profile().pages[0];
   char err[64];
   if (!gridConfigValidate(s_cfg, err, sizeof(err))) {
     gridConfigSetDefaults(s_cfg);
   }
 
-  lv_obj_t* scr = lv_scr_act();
-  lv_obj_set_style_bg_color(scr, lv_color_hex(0x0B1220), 0);
-  lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
-  s_root = scr;
+  lv_obj_set_style_bg_color(parent, lv_color_hex(0x0B1220), 0);
+  lv_obj_set_style_bg_opa(parent, LV_OPA_COVER, 0);
+  s_root = parent;
 
-  lv_obj_t* title = lv_label_create(scr);
+  lv_obj_t* title = lv_label_create(parent);
   const DeviceSettings settings = settingsStore.load();
   const char* device_name =
       settings.device_name.length() > 0 ? settings.device_name.c_str() : APP_DEFAULT_DEVICE_NAME;
@@ -368,41 +395,43 @@ bool homeGridScreenCreate() {
   lv_obj_set_style_text_color(title, lv_color_hex(0xE2E8F0), 0);
   lv_obj_align(title, LV_ALIGN_TOP_LEFT, 16, 12);
 
-  s_wifi = lv_label_create(scr);
+  s_wifi = lv_label_create(parent);
   lv_label_set_text(s_wifi, LV_SYMBOL_WIFI);
   lv_obj_set_style_text_font(s_wifi, &lv_font_montserrat_20, 0);
   lv_obj_set_style_text_color(s_wifi, lv_color_hex(0x38BDF8), 0);
 
-  s_ws = lv_img_create(scr);
+  s_ws = lv_img_create(parent);
   lv_img_set_src(s_ws, &icon_link_arrows);
   lv_obj_set_style_img_recolor_opa(s_ws, LV_OPA_COVER, 0);
   lv_obj_set_style_img_recolor(s_ws, lv_color_hex(0x64748B), 0);
   lv_obj_clear_flag(s_ws, LV_OBJ_FLAG_CLICKABLE);
 
-  s_ble = lv_label_create(scr);
+  s_ble = lv_label_create(parent);
   lv_label_set_text(s_ble, LV_SYMBOL_BLUETOOTH);
   lv_obj_set_style_text_font(s_ble, &lv_font_montserrat_20, 0);
   lv_obj_set_style_text_color(s_ble, lv_color_hex(0x64748B), 0);
 
-  s_volume_label = lv_label_create(scr);
+  s_volume_label = lv_label_create(parent);
   lv_obj_set_style_text_font(s_volume_label, &lv_font_montserrat_20, 0);
   lv_obj_set_style_text_color(s_volume_label, lv_color_hex(0xE2E8F0), 0);
 
-  s_clock_label = lv_label_create(scr);
+  s_clock_label = lv_label_create(parent);
   lv_label_set_text(s_clock_label, "--:--");
   lv_obj_set_style_text_font(s_clock_label, &lv_font_montserrat_20, 0);
   lv_obj_set_style_text_color(s_clock_label, lv_color_hex(0x64748B), 0);
 
-  s_tiles = lv_obj_create(scr);
+  s_tiles = lv_obj_create(parent);
   lv_obj_set_style_bg_opa(s_tiles, LV_OPA_TRANSP, 0);
   lv_obj_set_style_border_width(s_tiles, 0, 0);
   lv_obj_set_style_pad_all(s_tiles, 0, 0);
   lv_obj_clear_flag(s_tiles, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_add_flag(s_tiles, LV_OBJ_FLAG_GESTURE_BUBBLE);
+  lv_obj_add_flag(parent, LV_OBJ_FLAG_GESTURE_BUBBLE);
 
-  s_status = lv_label_create(scr);
+  s_status = lv_label_create(parent);
   lv_obj_set_style_text_font(s_status, &lv_font_montserrat_14, 0);
   lv_obj_set_style_text_color(s_status, lv_color_hex(0x94A3B8), 0);
-  lv_obj_align(s_status, LV_ALIGN_BOTTOM_MID, 0, -12);
+  lv_obj_align(s_status, LV_ALIGN_BOTTOM_MID, 0, -36);
 
   if (!buildTilesLocked()) {
     return false;
@@ -411,22 +440,27 @@ bool homeGridScreenCreate() {
   return true;
 }
 
-bool homeGridScreenReload(const GridConfig& cfg) {
+bool homeGridScreenReloadLocked(const GridConfig& cfg) {
   char err[64];
   if (!gridConfigValidate(cfg, err, sizeof(err))) {
     Serial.printf("[UI] reload reject: %s\n", err);
     return false;
   }
+  s_cfg = cfg;
+  const bool ok = buildTilesLocked();
+  if (ok) {
+    Serial.printf("[UI] Grid reloaded rev=%u\n", s_cfg.rev);
+  }
+  return ok;
+}
+
+bool homeGridScreenReload(const GridConfig& cfg) {
   if (!displayDriverLock(500)) {
     Serial.println("[UI] reload lock timeout");
     return false;
   }
-  s_cfg = cfg;
-  const bool ok = buildTilesLocked();
+  const bool ok = homeGridScreenReloadLocked(cfg);
   displayDriverUnlock();
-  if (ok) {
-    Serial.printf("[UI] Grid reloaded rev=%u\n", s_cfg.rev);
-  }
   return ok;
 }
 

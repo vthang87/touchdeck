@@ -151,3 +151,50 @@ bool gridConfigValidate(const GridConfig& cfg, char* err, size_t err_len) {
   }
   return true;
 }
+
+void deckProfileEnsureShortcutCount(DeckProfile& profile) {
+  if (profile.page_count < DECK_PAGE_MIN) {
+    profile.page_count = DECK_PAGE_MIN;
+  }
+  if (profile.page_count > DECK_PAGE_MAX) {
+    profile.page_count = DECK_PAGE_MAX;
+  }
+  profile.shortcut_count = static_cast<uint8_t>(profile.page_count - 1);
+  for (uint8_t i = profile.shortcut_count; i < DECK_SHORTCUT_PAGES_MAX; ++i) {
+    if (profile.pages[i].tile_count == 0) {
+      gridConfigSetDefaults(profile.pages[i]);
+      // Extra pages default to app-focused empty-ish grid (reuse defaults).
+    }
+  }
+}
+
+void deckProfileSetDefaults(DeckProfile& profile) {
+  memset(&profile, 0, sizeof(profile));
+  profile.rev = 1;
+  profile.page_count = DECK_PAGE_MIN;
+  profile.shortcut_count = 1;
+  gridConfigSetDefaults(profile.pages[0]);
+}
+
+bool deckProfileValidate(const DeckProfile& profile, char* err, size_t err_len) {
+  auto fail = [&](const char* msg) -> bool {
+    if (err && err_len) {
+      strncpy(err, msg, err_len - 1);
+      err[err_len - 1] = '\0';
+    }
+    return false;
+  };
+  if (profile.page_count < DECK_PAGE_MIN || profile.page_count > DECK_PAGE_MAX) {
+    return fail("page_count out of range");
+  }
+  const uint8_t expect = static_cast<uint8_t>(profile.page_count - 1);
+  if (profile.shortcut_count != expect) {
+    return fail("shortcut_count mismatch");
+  }
+  for (uint8_t i = 0; i < profile.shortcut_count; ++i) {
+    if (!gridConfigValidate(profile.pages[i], err, err_len)) {
+      return false;
+    }
+  }
+  return true;
+}

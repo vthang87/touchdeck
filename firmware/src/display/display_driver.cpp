@@ -111,9 +111,8 @@ bool displayDriverBegin() {
   displayDriverSetBacklight(100);
   lv_init();
 
-  // Must fit internal SRAM: PSRAM draw buffers fight the RGB DMA and make the panel flicker.
-  // 10 lines/buffer keeps both buffers under 32 KB so Wi-Fi still gets its internal RX buffers.
-  const size_t buf_pixels = BOARD_LCD_H_RES * 10;
+  // 15 lines/buffer (~24 KB each): smoother swipes than 10; leave headroom for Wi-Fi.
+  const size_t buf_pixels = BOARD_LCD_H_RES * 15;
   s_buf1 = static_cast<lv_color_t*>(
       heap_caps_malloc(sizeof(lv_color_t) * buf_pixels, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
   s_buf2 = static_cast<lv_color_t*>(

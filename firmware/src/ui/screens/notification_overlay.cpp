@@ -5,6 +5,7 @@
 
 #include "display/display_driver.h"
 #include "system/idle_manager.h"
+#include "ui/fonts/ui_fonts_vi.h"
 
 namespace {
 
@@ -146,12 +147,12 @@ void notificationOverlayBegin() {
   lv_obj_align(s_icon, LV_ALIGN_LEFT_MID, 0, 0);
 
   s_title = lv_label_create(s_banner);
-  lv_obj_set_style_text_font(s_title, &lv_font_montserrat_20, 0);
+  lv_obj_set_style_text_font(s_title, &ui_font_vi_20, 0);
   lv_obj_set_style_text_color(s_title, lv_color_hex(0xF8FAFC), 0);
   lv_obj_align(s_title, LV_ALIGN_TOP_LEFT, 44, 2);
 
   s_body = lv_label_create(s_banner);
-  lv_obj_set_style_text_font(s_body, &lv_font_montserrat_14, 0);
+  lv_obj_set_style_text_font(s_body, &ui_font_vi_14, 0);
   lv_obj_set_style_text_color(s_body, lv_color_hex(0xCBD5E1), 0);
   lv_obj_align(s_body, LV_ALIGN_BOTTOM_LEFT, 44, -2);
 }

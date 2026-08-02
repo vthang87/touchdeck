@@ -52,16 +52,11 @@ impl Store {
   }
 
   pub fn seed_defaults(&self) -> Result<(), StoreError> {
-    let count: i64 = self
-      .conn
-      .query_row("SELECT COUNT(*) FROM actions", [], |r| r.get(0))
-      .map_err(|e| StoreError::Msg(e.to_string()))?;
-    if count > 0 {
-      return Ok(());
-    }
-    let defaults = default_actions();
-    for a in defaults {
-      self.upsert_action(&a)?;
+    for a in default_actions() {
+      // Insert missing only — never overwrite user edits.
+      if self.get_action(&a.action_id)?.is_none() {
+        self.upsert_action(&a)?;
+      }
     }
     Ok(())
   }
@@ -230,6 +225,54 @@ fn default_actions() -> Vec<ActionRecord> {
       kind: ActionKind::Media,
       value: "previous".into(),
       label: "Previous".into(),
+    },
+    ActionRecord {
+      action_id: "media_play_pause".into(),
+      kind: ActionKind::Media,
+      value: "play_pause".into(),
+      label: "Media Play/Pause".into(),
+    },
+    ActionRecord {
+      action_id: "media_next".into(),
+      kind: ActionKind::Media,
+      value: "next".into(),
+      label: "Media Next".into(),
+    },
+    ActionRecord {
+      action_id: "media_previous".into(),
+      kind: ActionKind::Media,
+      value: "previous".into(),
+      label: "Media Previous".into(),
+    },
+    ActionRecord {
+      action_id: "media_seek_fwd".into(),
+      kind: ActionKind::Media,
+      value: "seek_fwd".into(),
+      label: "Seek +10s".into(),
+    },
+    ActionRecord {
+      action_id: "media_seek_back".into(),
+      kind: ActionKind::Media,
+      value: "seek_back".into(),
+      label: "Seek −10s".into(),
+    },
+    ActionRecord {
+      action_id: "media_rate_up".into(),
+      kind: ActionKind::Media,
+      value: "rate_up".into(),
+      label: "Speed +".into(),
+    },
+    ActionRecord {
+      action_id: "media_rate_down".into(),
+      kind: ActionKind::Media,
+      value: "rate_down".into(),
+      label: "Speed −".into(),
+    },
+    ActionRecord {
+      action_id: "media_rate_1x".into(),
+      kind: ActionKind::Media,
+      value: "rate_1x".into(),
+      label: "Speed 1×".into(),
     },
     ActionRecord {
       action_id: "open_telegram".into(),

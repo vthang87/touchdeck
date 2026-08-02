@@ -11,6 +11,8 @@
 #include "board_config.h"
 #include "app/input_queue.h"
 #include "ui/screens/home_grid_screen.h"
+#include "ui/screens/media_screen.h"
+#include "ui/ui_manager.h"
 #include "display/display_driver.h"
 #include "grid_config.h"
 
@@ -124,8 +126,33 @@ class CommandCallbacks : public NimBLECharacteristicCallbacks {
           const bool muted = doc["muted"] | false;
           if (level >= 0 && level <= 100) {
             homeGridScreenSetVolume(level, muted);
+            mediaScreenSetVolume(level, muted);
             bleManagerNotifyStatus();
           }
+          return;
+        }
+        if (strcmp(op, "now_playing") == 0) {
+          const char* title = doc["title"] | "";
+          const char* artist = doc["artist"] | "";
+          const char* app = doc["app"] | "";
+          const bool playing = doc["playing"] | false;
+          const uint32_t pos_ms = doc["pos_ms"] | 0;
+          const uint32_t dur_ms = doc["dur_ms"] | 0;
+          const uint16_t rate_x100 = static_cast<uint16_t>(doc["rate_x100"] | 100);
+          mediaScreenSetNowPlaying(title, artist, playing, pos_ms, dur_ms, app, rate_x100);
+          mediaScreenSetLinked(true);
+          return;
+        }
+        if (strcmp(op, "page") == 0) {
+          const int index = doc["index"] | 0;
+          if (index >= 0 && index < DECK_PAGE_MAX) {
+            uiManagerSetPage(static_cast<uint8_t>(index));
+          }
+          return;
+        }
+        if (strcmp(op, "pages") == 0) {
+          const int count = doc["count"] | DECK_PAGE_MIN;
+          uiManagerSetPageCount(static_cast<uint8_t>(count));
           return;
         }
         if (strcmp(op, "highlight") == 0) {

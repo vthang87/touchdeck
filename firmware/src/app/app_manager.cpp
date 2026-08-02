@@ -60,6 +60,9 @@ void AppManager::begin() {
 
   if (!uiManagerBegin()) {
     Serial.println("[BOOT] UI init failed — continuing headless");
+  } else {
+    // UI came up — reset the crash counter so saved Wi-Fi is used next boot.
+    settingsStore.clearBootAttempts();
   }
 
   const String ble_name = settings.ble_name.length() ? settings.ble_name : settings.device_name;

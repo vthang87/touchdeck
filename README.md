@@ -8,12 +8,15 @@ Protocol **v4** — board is a thin device (`action_id` over GATT). The companio
 
 ## Features
 
-- Customizable home grid (2–5 cols × 1–3 rows) with built-in icons/colors
+- **Workspace pager:** page 0 = Media (Now Playing), pages 1…N−1 = shortcut grids (2–4 pages)
+- Customizable shortcut grid (2–5 cols × 1–3 rows) with built-in icons/colors
 - Media & app tiles: GATT `tile_press` → Companion Action Engine
+- Now Playing sync (any macOS player via MediaRemote / JXA), seek ±10s, playback rate, volume
+- Vietnamese UI fonts on Media / notifications; clock shows track title while playing
 - Volume UI on the deck synced from the Mac over GATT Command
 - Web grid editor at `/grid` (AP `192.168.4.1` or STA `http://touchdeck.local/grid`)
 - Wi-Fi setup portal + ArduinoOTA + custom icons on SD
-- Grid profile on LittleFS (`/grid.json`) with `action_id` per tile
+- Grid profile on LittleFS with multi-page `action_id` tiles
 
 ## Requirements
 
@@ -76,9 +79,9 @@ pnpm run dist           # .app + .dmg
 ```
 
 1. Power the board with BLE pairing mode on
-2. Companion → **Scan BLE** → Connect to `TouchDeck-XXXX`
-3. Tap a tile — companion maps `action_id` via SQLite and runs OpenApp / volume / media
-4. Volume changes are pushed back to the deck header over GATT
+2. Companion → **Scan BLE** → Connect to `TouchDeck-XXXX` (auto-reconnect remembers last device)
+3. Swipe Media ↔ shortcuts; tap a tile — companion maps `action_id` via SQLite
+4. Now Playing + volume are pushed back to the deck over GATT
 
 Electron companion (legacy WS) lives in [`archive/companion-electron/`](archive/companion-electron/) and is not shipped.
 

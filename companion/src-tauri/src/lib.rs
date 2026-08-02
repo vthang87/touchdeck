@@ -1,6 +1,7 @@
 pub mod action;
 pub mod ble;
 pub mod board;
+pub mod now_playing;
 pub mod permissions;
 pub mod platform;
 pub mod storage;
@@ -136,17 +137,28 @@ async fn ble_connect(state: State<'_, AppState>, app: AppHandle, id: String) -> 
     emit_log(&app, "error", e.to_string());
     e.to_string()
   })?;
+  let name = ble.connected_name();
   drop(ble);
   {
     let store = state.store.lock().await;
     let _ = store.set_setting("ble_last_id", &id);
+    if let Some(ref n) = name {
+      let _ = store.set_setting("ble_last_name", n);
+    }
     let _ = store.set_setting("ble_permission_ok", "1");
   }
   crate::permissions::mark_bluetooth_used();
   emit_log(&app, "info", "Connected — listening for tile_press");
   let _ = app.emit(
     "ble-status",
-    serde_json::json!({"connected": true, "id": id, "reconnecting": false}),
+    serde_json::json!({
+      "connected": true,
+      "id": id,
+      "name": name,
+      "lastId": id,
+      "lastName": name,
+      "reconnecting": false,
+    }),
   );
   Ok(())
 }
@@ -159,6 +171,7 @@ async fn ble_disconnect(state: State<'_, AppState>, app: AppHandle) -> Result<()
   {
     let store = state.store.lock().await;
     let _ = store.delete_setting("ble_last_id");
+    let _ = store.delete_setting("ble_last_name");
   }
   emit_log(&app, "info", "Disconnected — auto-reconnect cleared");
   let _ = app.emit(
@@ -174,7 +187,9 @@ async fn ble_status(state: State<'_, AppState>) -> Result<serde_json::Value, Str
   Ok(serde_json::json!({
     "connected": ble.is_connected(),
     "id": ble.connected_id(),
+    "name": ble.connected_name().or_else(|| ble.last_name()),
     "lastId": ble.last_id(),
+    "lastName": ble.last_name(),
     "autoReconnect": ble.auto_reconnect(),
     "reconnecting": ble.wants_reconnect(),
   }))
@@ -217,7 +232,9 @@ async fn set_auto_reconnect(
     serde_json::json!({
       "connected": ble.is_connected(),
       "id": ble.connected_id(),
+      "name": ble.connected_name().or_else(|| ble.last_name()),
       "lastId": ble.last_id(),
+      "lastName": ble.last_name(),
       "autoReconnect": enabled,
       "reconnecting": ble.wants_reconnect(),
     }),
@@ -343,6 +360,10 @@ fn resolve_action(store: &Store, action_id: &str) -> Result<Option<ActionRecord>
     && action_id != "play_pause"
     && action_id != "next"
     && action_id != "previous"
+    && action_id != "rate_up"
+    && action_id != "rate_down"
+    && action_id != "rate_1x"
+    && !action_id.starts_with("media_")
   {
     let alt = format!("open_{action_id}");
     if let Some(r) = store.get_action(&alt).map_err(|e| e.to_string())? {
@@ -360,6 +381,7 @@ fn resolve_action(store: &Store, action_id: &str) -> Result<Option<ActionRecord>
 
 async fn handle_tile_press(app: AppHandle, state: AppState, action_id: String) {
   emit_log(&app, "info", format!("tile_press → {action_id}"));
+  tracing::info!("tile_press → {action_id}");
   let record = {
     let store = state.store.lock().await;
     match resolve_action(&store, &action_id) {
@@ -379,7 +401,14 @@ async fn handle_tile_press(app: AppHandle, state: AppState, action_id: String) {
     }
   };
 
-  match state.engine.execute(&record).await {
+  // Keep CoreBluetooth responsive — osascript / MediaRemote seek can block 0.5–2s.
+  let engine = state.engine.clone();
+  let record_exec = record.clone();
+  let result = tokio::task::spawn_blocking(move || engine.execute_blocking(&record_exec))
+    .await
+    .unwrap_or_else(|e| Err(format!("action join: {e}")));
+
+  match result {
     Ok(Some(vol)) => {
       emit_log(
         &app,
@@ -404,9 +433,11 @@ async fn handle_tile_press(app: AppHandle, state: AppState, action_id: String) {
     }
     Ok(None) => {
       emit_log(&app, "info", format!("executed {}", record.action_id));
+      tracing::info!("executed {}", record.action_id);
     }
     Err(e) => {
       emit_log(&app, "error", format!("action failed: {e}"));
+      tracing::error!("action failed: {e}");
     }
   }
 }
@@ -490,6 +521,7 @@ pub fn run() {
           .map(|v| v != "0" && v != "false")
           .unwrap_or(true);
         let last = st.get_setting("ble_last_id").ok().flatten();
+        let last_name = st.get_setting("ble_last_name").ok().flatten();
         let ble_ok = st
           .get_setting("ble_permission_ok")
           .ok()
@@ -501,7 +533,7 @@ pub fn run() {
         crate::permissions::hydrate_bluetooth_ready(ble_ok);
         let mut hub = ble_h.blocking_lock();
         hub.set_auto_reconnect(auto);
-        hub.remember_device(last.clone());
+        hub.remember_device(last.clone(), last_name);
         if let Some(ref id) = last {
           if auto {
             emit_log(
@@ -513,18 +545,63 @@ pub fn run() {
         }
       }
 
+      let (link_lost_tx, mut link_lost_rx) = tokio::sync::mpsc::unbounded_channel::<()>();
+      {
+        let mut hub = ble_h.blocking_lock();
+        hub.set_link_lost_signal(link_lost_tx);
+      }
+
       tauri::async_runtime::spawn(async move {
+        {
+          let mut hub = ble_h.lock().await;
+          if let Err(e) = hub.spawn_disconnect_watcher().await {
+            warn!("BLE disconnect watcher: {e}");
+          }
+        }
         // First attempt soon after launch.
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        let mut last_ping = std::time::Instant::now();
         loop {
           let interval = {
             let hub = ble_h.lock().await;
             hub.reconnect_interval()
           };
-          tokio::time::sleep(interval).await;
+          tokio::select! {
+            _ = tokio::time::sleep(interval) => {}
+            _ = link_lost_rx.recv() => {
+              warn!("BLE link-lost signal — reconnecting soon");
+              // Drain burst of duplicate disconnect signals.
+              while link_lost_rx.try_recv().is_ok() {}
+              tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+            }
+          }
           let mut hub = ble_h.lock().await;
           let was_connected = hub.is_connected();
-          match hub.tick_reconnect(tx_h.clone()).await {
+          // Keep-alive while healthy (reduces idle drops). Bound so a hung write
+          // cannot pin the BLE mutex.
+          if hub.is_connected() && hub.notify_alive() && last_ping.elapsed() >= std::time::Duration::from_secs(12)
+          {
+            match tokio::time::timeout(std::time::Duration::from_secs(3), hub.ping()).await {
+              Ok(Err(e)) => warn!("GATT keep-alive ping failed: {e}"),
+              Err(_) => warn!("GATT keep-alive ping timed out"),
+              Ok(Ok(())) => {}
+            }
+            last_ping = std::time::Instant::now();
+          }
+          let tick = tokio::time::timeout(
+            std::time::Duration::from_secs(25),
+            hub.tick_reconnect(tx_h.clone()),
+          )
+          .await;
+          let tick = match tick {
+            Ok(r) => r,
+            Err(_) => {
+              error!("reconnect tick timed out — clearing link to unstick mutex");
+              hub.force_clear_link();
+              Err(crate::ble::BleError::Msg("reconnect tick timed out".into()))
+            }
+          };
+          match tick {
             Ok(ReconnectTick::Healthy) => {}
             Ok(ReconnectTick::Idle) => {}
             Ok(ReconnectTick::LinkLost) => {
@@ -534,7 +611,9 @@ pub fn run() {
                 serde_json::json!({
                   "connected": false,
                   "id": hub.last_id(),
+                  "name": hub.last_name(),
                   "lastId": hub.last_id(),
+                  "lastName": hub.last_name(),
                   "autoReconnect": hub.auto_reconnect(),
                   "reconnecting": hub.wants_reconnect(),
                 }),
@@ -542,21 +621,33 @@ pub fn run() {
             }
             Ok(ReconnectTick::Reconnected) => {
               let id = hub.connected_id();
+              let name = hub.connected_name();
               emit_log(
                 &app_h,
                 "info",
-                format!("Reconnected to {}", id.clone().unwrap_or_default()),
+                format!(
+                  "Reconnected to {}",
+                  name
+                    .clone()
+                    .or_else(|| id.clone())
+                    .unwrap_or_default()
+                ),
               );
               if let Some(ref id) = id {
                 let st = store_h.lock().await;
                 let _ = st.set_setting("ble_last_id", id);
+                if let Some(ref n) = name {
+                  let _ = st.set_setting("ble_last_name", n);
+                }
               }
               let _ = app_h.emit(
                 "ble-status",
                 serde_json::json!({
                   "connected": true,
                   "id": id,
+                  "name": name,
                   "lastId": hub.last_id(),
+                  "lastName": hub.last_name(),
                   "autoReconnect": hub.auto_reconnect(),
                   "reconnecting": false,
                 }),
@@ -573,7 +664,9 @@ pub fn run() {
                 serde_json::json!({
                   "connected": false,
                   "id": hub.last_id(),
+                  "name": hub.last_name(),
                   "lastId": hub.last_id(),
+                  "lastName": hub.last_name(),
                   "autoReconnect": hub.auto_reconnect(),
                   "reconnecting": hub.wants_reconnect(),
                 }),
@@ -583,6 +676,83 @@ pub fn run() {
           }
         }
       });
+
+      // Push Now Playing to the board while connected (JXA poll ~0.4–0.8s).
+      let ble_np = ble.clone();
+      let app_np = app.handle().clone();
+      tauri::async_runtime::spawn(async move {
+        let mut last = crate::now_playing::NowPlaying::default();
+        let mut last_push = std::time::Instant::now()
+          .checked_sub(std::time::Duration::from_secs(10))
+          .unwrap_or_else(std::time::Instant::now);
+        let mut last_logged_title = String::new();
+        loop {
+          tokio::time::sleep(std::time::Duration::from_millis(1200)).await;
+          let connected = {
+            let hub = ble_np.lock().await;
+            hub.is_connected()
+          };
+          if !connected {
+            continue;
+          }
+          // osascript/JXA is blocking — keep it off the BLE lock.
+          let np = tokio::task::spawn_blocking(crate::now_playing::poll)
+            .await
+            .unwrap_or_default();
+          let changed = np != last;
+          let playing = np.playing || !np.title.is_empty();
+          let due = last_push.elapsed() >= std::time::Duration::from_millis(if playing {
+            1500
+          } else {
+            3000
+          });
+          if !changed && !due {
+            continue;
+          }
+          last = np.clone();
+          last_push = std::time::Instant::now();
+          let cmd = serde_json::json!({
+            "op": "now_playing",
+            "title": np.title,
+            "artist": np.artist,
+            "playing": np.playing,
+            "pos_ms": np.pos_ms,
+            "dur_ms": np.dur_ms,
+            "app": np.app,
+            "rate_x100": np.rate_x100,
+          });
+          {
+            let hub = ble_np.lock().await;
+            if let Err(e) = hub.write_command_fast(&cmd).await {
+              emit_log(&app_np, "warn", format!("now_playing push failed: {e}"));
+              tracing::warn!("now_playing push failed: {e}");
+            }
+          }
+          if !np.title.is_empty() && np.title != last_logged_title {
+            last_logged_title = np.title.clone();
+            let msg = format!(
+              "Now Playing: {}{}{}{}",
+              np.title,
+              if np.artist.is_empty() {
+                String::new()
+              } else {
+                format!(" — {}", np.artist)
+              },
+              if np.app.is_empty() {
+                String::new()
+              } else {
+                format!(" [{}]", np.app)
+              },
+              if np.playing { " ▶" } else { " ⏸" }
+            );
+            emit_log(&app_np, "info", &msg);
+            tracing::info!("{msg}");
+          } else if np.title.is_empty() && last_logged_title.is_empty() && due {
+            tracing::debug!("now_playing idle (nothing in Control Center)");
+          }
+        }
+      });
+
       info!("TouchDeck Companion ready");
       let perms = crate::permissions::status();
       info!(

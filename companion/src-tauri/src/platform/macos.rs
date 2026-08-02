@@ -92,10 +92,31 @@ pub fn toggle_mute() -> Result<VolumeState, String> {
 
 /// Media keys via System Events (requires Accessibility permission).
 pub fn media_key(op: &str) -> Result<(), String> {
+  match op {
+    "seek_fwd" | "media_seek_fwd" => return crate::now_playing::seek(10),
+    "seek_back" | "media_seek_back" => return crate::now_playing::seek(-10),
+    "rate_up" | "media_rate_up" => {
+      crate::now_playing::nudge_rate(1)?;
+      return Ok(());
+    }
+    "rate_down" | "media_rate_down" => {
+      crate::now_playing::nudge_rate(-1)?;
+      return Ok(());
+    }
+    "rate_1x" | "media_rate_1x" => {
+      crate::now_playing::set_rate_x100(100)?;
+      return Ok(());
+    }
+    _ => {}
+  }
   let script = match op {
-    "play_pause" | "playpause" => "tell application \"System Events\" to key code 16",
-    "next" => "tell application \"System Events\" to key code 17",
-    "previous" | "prev" => "tell application \"System Events\" to key code 18",
+    "play_pause" | "playpause" | "media_play_pause" => {
+      "tell application \"System Events\" to key code 16"
+    }
+    "next" | "media_next" => "tell application \"System Events\" to key code 17",
+    "previous" | "prev" | "media_previous" => {
+      "tell application \"System Events\" to key code 18"
+    }
     _ => return Err(format!("unknown media op: {op}")),
   };
   run_osascript(script)?;
