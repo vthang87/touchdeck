@@ -7,6 +7,10 @@ const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
   ".bin": "application/octet-stream",
   ".md": "text/plain; charset=utf-8",
 };
@@ -35,7 +39,7 @@ export function webInstallRoot(): string {
 }
 
 export function webInstallUrl(): string {
-  return `http://127.0.0.1:${INSTALL_PORT}/`;
+  return `http://127.0.0.1:${INSTALL_PORT}/setup.html`;
 }
 
 export function startWebInstallServer(): boolean {

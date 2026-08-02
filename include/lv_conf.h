@@ -85,4 +85,7 @@
 #define LV_USE_THEME_DEFAULT 1
 #define LV_THEME_DEFAULT_DARK 1
 
+// Needed for /api/screenshot (lv_snapshot_take_to_buf → PSRAM).
+#define LV_USE_SNAPSHOT 1
+
 #endif /* LV_CONF_H */

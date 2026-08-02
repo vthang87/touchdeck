@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "web/install/**"
+      - "docs/images/**"
       - "include/version.h"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
@@ -28,6 +29,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Sync doc screenshots into installer assets
+        run: |
+          mkdir -p web/install/assets
+          for f in home-grid.png grid-editor.png device-settings.png companion-ui.png; do
+            if [[ -f "docs/images/$f" ]]; then
+              cp "docs/images/$f" "web/install/assets/$f"
+            fi
+          done
+          ls -la web/install/assets
 
       - name: Write Pages manifest (firmware from GitHub Releases)
         env:

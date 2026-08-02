@@ -6,11 +6,16 @@ Trang web cho phép flash firmware TouchDeck lên board **JC8048W550C** (ESP32-S
 
 ```text
 web/install/
-├── index.html       # Giao diện cài đặt
+├── index.html       # Giới thiệu + hướng dẫn sử dụng (landing)
+├── setup.html       # Trình cài firmware (Web Serial)
 ├── installer.js     # Web Serial + esptool-js (ES module)
 ├── manifest.json    # Metadata + offset flash
+├── assets/          # Ảnh HDSD (đồng bộ từ docs/images trên CI)
 └── firmware/        # Binary (.bin) — tạo bởi script prepare
 ```
+
+- Landing: https://vthang87.github.io/touchdeck/
+- Flash: https://vthang87.github.io/touchdeck/setup.html
 
 ## Yêu cầu
 

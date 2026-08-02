@@ -44,8 +44,10 @@ cd web && pnpm serve                # http://127.0.0.1:8787
 
 Hoặc TouchDeck Companion → menu **Flash ESP (browser)**.
 
-**GitHub:** tag `v*` → Release tự build; deploy trang cài qua **Cloudflare Worker** hoặc GitHub Pages.
+**GitHub:** tag `v*` → Release tự build; trang giới thiệu + HDSD trên **GitHub Pages**, flash tại `/setup.html`. Cloudflare Worker (tuỳ chọn) sync cùng `web/install/`.
 
+- Giới thiệu / HDSD: https://vthang87.github.io/touchdeck/
+- Cài firmware: https://vthang87.github.io/touchdeck/setup.html
 - Cloudflare: [`docs/cloudflare-worker.md`](docs/cloudflare-worker.md)
 - Web install: [`docs/web-install.md`](docs/web-install.md)
 
@@ -96,6 +98,7 @@ Default OTA password: `touchdeck` (change in portal).
 
 ## Docs
 
+- [`docs/huong-dan-su-dung.md`](docs/huong-dan-su-dung.md) — **Giới thiệu hệ thống + hướng dẫn sử dụng** (có ảnh)
 - [`docs/cloudflare-worker.md`](docs/cloudflare-worker.md) — deploy web installer lên Cloudflare Workers
 - [`docs/web-install.md`](docs/web-install.md) — cài firmware ESP qua Chrome/Edge (Web Serial)
 - [`docs/approval-notifications.md`](docs/approval-notifications.md) — approval alert flow (Cursor/Codex → deck)

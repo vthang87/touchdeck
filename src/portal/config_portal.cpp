@@ -11,6 +11,7 @@
 #include "ui/ui_manager.h"
 #include "display/display_driver.h"
 #include "system/idle_manager.h"
+#include "ui/screenshot.h"
 
 static WebServer* s_server = nullptr;
 static DeviceSettings s_current;
@@ -626,8 +627,39 @@ static void handleApiBrightness() {
   sendJson(200, json);
 }
 
+static void handleApiScreenshot() {
+  uint8_t* bmp = nullptr;
+  size_t len = 0;
+  if (!uiScreenshotCaptureBmp(&bmp, &len) || !bmp || len == 0) {
+    sendJson(500, "{\"error\":\"screenshot failed\"}");
+    return;
+  }
+
+  // Stream the BMP; Arduino WebServer String body cannot hold ~750 KB.
+  s_server->sendHeader("Cache-Control", "no-store");
+  s_server->sendHeader("Content-Disposition", "inline; filename=\"touchdeck.bmp\"");
+  s_server->setContentLength(len);
+  s_server->send(200, "image/bmp", "");
+  WiFiClient client = s_server->client();
+  const size_t chunk = 2048;
+  size_t sent = 0;
+  while (sent < len && client.connected()) {
+    const size_t n = min(chunk, len - sent);
+    const size_t w = client.write(bmp + sent, n);
+    if (w == 0) {
+      break;
+    }
+    sent += w;
+    yield();
+  }
+  uiScreenshotFree(bmp);
+  Serial.printf("[SHOT] HTTP sent %u / %u\n", static_cast<unsigned>(sent),
+                static_cast<unsigned>(len));
+}
+
 static void registerRoutes() {
   s_server->on("/api/brightness", HTTP_GET, handleApiBrightness);
+  s_server->on("/api/screenshot", HTTP_GET, handleApiScreenshot);
   s_server->on("/", HTTP_GET, handleRoot);
   s_server->on("/grid", HTTP_GET, handleGridPage);
   s_server->on("/save", HTTP_POST, handleSave);

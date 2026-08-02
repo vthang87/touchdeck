@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>TouchDeck home — 800×480</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&display=swap");
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 800px;
+      height: 480px;
+      overflow: hidden;
+      background: #05080f;
+      font-family: "Montserrat", system-ui, sans-serif;
+      color: #e2e8f0;
+    }
+    .panel { width: 800px; height: 480px; position: relative; }
+    header {
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+    }
+    .title { font-size: 20px; font-weight: 600; }
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 16px;
+      font-weight: 500;
+    }
+    .vol { color: #e2e8f0; }
+    .bt { color: #4ade80; font-size: 18px; line-height: 1; }
+    .ws { color: #4ade80; font-size: 18px; font-weight: 700; letter-spacing: -1px; }
+    .wifi { color: #38bdf8; font-size: 18px; }
+    .grid {
+      position: absolute;
+      top: 56px; left: 0; right: 0; bottom: 40px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      gap: 12px;
+      padding: 16px;
+    }
+    .tile {
+      background: #161f32;
+      border: 1px solid #27354d;
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding-bottom: 6px;
+    }
+    .badge {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 26px;
+      font-weight: 700;
+    }
+    .tile span {
+      font-size: 16px;
+      font-weight: 500;
+      color: #e2e8f0;
+    }
+    footer {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <header>
+      <div class="title">Thang Dev</div>
+      <div class="status">
+        <span class="vol">🔊&nbsp;&nbsp;38%</span>
+        <span class="bt" title="Bluetooth">ꔃ</span>
+        <span class="ws" title="WebSocket">⇅</span>
+        <span class="wifi">📶</span>
+      </div>
+    </header>
+    <div class="grid">
+      <div class="tile"><div class="badge" style="background:#475569">−</div><span>Vol −</span></div>
+      <div class="tile"><div class="badge" style="background:#64748B">🔇</div><span>Mute</span></div>
+      <div class="tile"><div class="badge" style="background:#475569">+</div><span>Vol +</span></div>
+      <div class="tile"><div class="badge" style="background:#229ED9">✈</div><span>Telegram</span></div>
+      <div class="tile"><div class="badge" style="background:#0369A1">S</div><span>Safari</span></div>
+      <div class="tile"><div class="badge" style="background:#1F2937">&gt;_</div><span>iTerm</span></div>
+      <div class="tile"><div class="badge" style="background:#10A37F">✦</div><span>ChatGPT</span></div>
+      <div class="tile"><div class="badge" style="background:#0D8A6A">⌘</div><span>Codex</span></div>
+      <div class="tile"><div class="badge" style="background:#6366F1">◆</div><span>Cursor</span></div>
+      <div class="tile"><div class="badge" style="background:#007ACC">{}</div><span>VS Code</span></div>
+    </div>
+    <footer>edit: touchdeck.local/grid</footer>
+  </div>
+</body>
+</html>
