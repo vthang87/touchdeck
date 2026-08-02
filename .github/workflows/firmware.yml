@@ -29,8 +29,13 @@ jobs:
           restore-keys: |
             pio-${{ runner.os }}-
 
-      - name: Setup PlatformIO
-        uses: platformio/platformio-core@v6
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PlatformIO
+        run: pip install platformio
 
       - name: Build firmware (usb)
         run: pio run -e usb
