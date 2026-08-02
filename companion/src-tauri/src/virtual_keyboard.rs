@@ -72,7 +72,10 @@ fn shortcut(spec: &str) -> Result<(), String> {
       "shift" => Key::Shift,
       "alt" | "opt" | "option" => Key::Alt,
       "ctrl" | "control" => Key::Control,
+      #[cfg(target_os = "macos")]
       "fn" => Key::Function,
+      #[cfg(not(target_os = "macos"))]
+      "fn" => return Err("fn modifier only supported on macOS".into()),
       _ => return Err(format!("unknown modifier: {m}")),
     };
     enigo.key(k, Direction::Press).map_err(|e| e.to_string())?;
@@ -86,7 +89,10 @@ fn shortcut(spec: &str) -> Result<(), String> {
       "shift" => Key::Shift,
       "alt" | "opt" | "option" => Key::Alt,
       "ctrl" | "control" => Key::Control,
+      #[cfg(target_os = "macos")]
       "fn" => Key::Function,
+      #[cfg(not(target_os = "macos"))]
+      "fn" => continue,
       _ => continue,
     };
     enigo.key(k, Direction::Release).map_err(|e| e.to_string())?;

@@ -32,6 +32,11 @@ pub fn toggle_mute() -> Result<VolumeState, String> {
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+pub fn read_volume() -> Result<VolumeState, String> {
+  Err("volume not supported on this OS".into())
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 pub fn media_key(_op: &str) -> Result<(), String> {
   Err("media not supported on this OS".into())
 }

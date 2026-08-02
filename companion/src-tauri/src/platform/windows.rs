@@ -16,6 +16,10 @@ pub fn toggle_mute() -> Result<VolumeState, String> {
   Err("Windows mute scaffold — not implemented yet".into())
 }
 
+pub fn read_volume() -> Result<VolumeState, String> {
+  Err("Windows volume scaffold — not implemented yet".into())
+}
+
 pub fn media_key(_op: &str) -> Result<(), String> {
   Err("Windows media scaffold — not implemented yet".into())
 }
