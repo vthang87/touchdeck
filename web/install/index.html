@@ -265,9 +265,14 @@
       </ol>
 
       <h3>4. Companion trên Mac</h3>
+      <p>Cách nhanh: đóng gói rồi mở file <code>.dmg</code> (không cần <code>pnpm start</code> mỗi lần):</p>
       <pre style="background:#0a0f1a;border:1px solid var(--line);border-radius:12px;padding:14px;overflow:auto;color:#bae6fd;font-size:0.88rem"><code>cd companion
 pnpm install
-pnpm start</code></pre>
+pnpm run dist
+# → companion/release/TouchDeck Companion-*.dmg</code></pre>
+      <p>Kéo app vào Applications → mở từ menu bar. Lần đầu nếu macOS chặn: chuột phải → Open.</p>
+      <p>Hoặc chạy từ source khi đang phát triển:</p>
+      <pre style="background:#0a0f1a;border:1px solid var(--line);border-radius:12px;padding:14px;overflow:auto;color:#bae6fd;font-size:0.88rem"><code>cd companion && pnpm install && pnpm start</code></pre>
       <ol>
         <li>Tab Connect → Scan / nhập <code>touchdeck.local</code> port <code>81</code> → Connect</li>
         <li>Accessibility: bật TouchDeck Companion (cho cảnh báo Cursor/Codex)</li>
@@ -313,9 +318,10 @@ pnpm start</code></pre>
     </div>
 
     <footer>
-      <span>TouchDeck · <a href="https://github.com/vthang87/touchdeck">GitHub</a></span>
+      <span>TouchDeck · MIT License · <a href="https://github.com/vthang87/touchdeck">GitHub</a></span>
       <span>
         <a href="setup.html">Cài firmware</a> ·
+        <a href="https://github.com/vthang87/touchdeck/blob/main/LICENSE">LICENSE</a> ·
         <a href="https://github.com/vthang87/touchdeck/blob/main/docs/huong-dan-su-dung.md">Tài liệu đầy đủ</a>
       </span>
     </footer>

@@ -110,8 +110,11 @@ Chi tiết: [`web-install.md`](web-install.md).
 ```bash
 cd companion
 pnpm install
-pnpm start
+pnpm run dist          # → companion/release/*.dmg
+# hoặc dev: pnpm start
 ```
+
+Mở `.dmg` → kéo **TouchDeck Companion.app** vào Applications.
 
 1. Tab **Connect** → Scan hoặc nhập `touchdeck.local`, port `81` → **Connect**
 2. System Settings → Privacy & Security → **Accessibility** → bật TouchDeck Companion (cần cho cảnh báo approve Cursor/Codex)

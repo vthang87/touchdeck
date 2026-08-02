@@ -63,7 +63,23 @@ API: `GET/POST /api/grid`, `POST /api/grid/reset`
 
 The companion talks to the board over **Wi-Fi (WebSocket, port 81)**, not Bluetooth.
 
-macOS reserves BLE HID peripherals: once the board is paired as a keyboard for media keys, Chromium/CoreBluetooth refuse GATT access to it (`NetworkError: Unsupported device`). Wi-Fi sidesteps that entirely and lets HID keep working.
+macOS reserves BLE HID peripherals: once the board is paired as a keyboard for media keys, Chromium/CoreBluetooth refuse GATT access to it. Wi-Fi sidesteps that entirely and lets HID keep working.
+
+### Cài nhanh (file đóng gói)
+
+```bash
+cd companion
+pnpm install
+pnpm run dist          # → companion/release/TouchDeck Companion-0.2.0-*.dmg
+```
+
+Mở file `.dmg` → kéo **TouchDeck Companion.app** vào Applications → double-click chạy (menu bar).
+
+Lần đầu macOS có thể chặn app chưa ký: **System Settings → Privacy & Security → Open Anyway**, hoặc chuột phải → Open.
+
+CI cũng upload artifact `touchdeck-companion-macos` (DMG + ZIP) trên mỗi push đổi companion.
+
+### Chạy từ source (dev)
 
 ```bash
 cd companion
@@ -106,3 +122,7 @@ Default OTA password: `touchdeck` (change in portal).
 - [`docs/provisioning.md`](docs/provisioning.md) — Wi-Fi / device setup
 - [`docs/ota-process.md`](docs/ota-process.md) — OTA update flow
 - [`docs/jc8048w550c-platformio-wifi-ble-ota.md`](docs/jc8048w550c-platformio-wifi-ble-ota.md) — board architecture
+
+## License
+
+[MIT](LICENSE) © 2026 Thang Dang

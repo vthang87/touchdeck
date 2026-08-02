@@ -2,19 +2,55 @@
   "name": "touchdeck-companion",
   "version": "0.2.0",
   "private": true,
-  "description": "TouchDeck macOS menu-bar companion — launches apps from BLE tile_press events",
+  "description": "TouchDeck macOS menu-bar companion — opens apps from Wi-Fi tile_press events",
+  "author": "Thang Dang",
+  "license": "MIT",
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc && mkdir -p dist/renderer dist/web-install && cp -R ../web/install/. dist/web-install/ && cp src/renderer/index.html src/renderer/app.js dist/renderer/",
     "start": "pnpm run build && electron .",
-    "dev": "tsc -w"
+    "dev": "tsc -w",
+    "dist": "pnpm run build && electron-builder --mac dmg zip",
+    "dist:dir": "pnpm run build && electron-builder --mac dir"
   },
   "devDependencies": {
     "@types/node": "^20.17.0",
     "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
     "typescript": "^5.6.3"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["electron"]
+    "onlyBuiltDependencies": ["electron", "electron-builder"]
+  },
+  "build": {
+    "appId": "app.touchdeck.companion",
+    "productName": "TouchDeck Companion",
+    "copyright": "Copyright © 2026 Thang Dang",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "!dist/web-install/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "dist/web-install",
+        "to": "web-install"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": ["dmg", "zip"],
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "identity": null
+    },
+    "dmg": {
+      "title": "TouchDeck Companion"
+    },
+    "artifactName": "${productName}-${version}-${arch}.${ext}"
   }
 }
