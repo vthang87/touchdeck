@@ -70,7 +70,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: touchdeck-firmware
-          path: dist
+          # Keep artifact paths as uploaded (dist/release/*, web/install/manifest.json)
+          path: .
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
