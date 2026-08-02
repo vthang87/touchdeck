@@ -1,8 +1,13 @@
 name: Web Installer (Pages)
 
-# Primary web installer deploy is Cloudflare Worker (see cloudflare.yml).
-# Run this workflow manually only if you enable GitHub Pages on the repo.
+# Deploys web/install to GitHub Pages alongside Cloudflare Worker (cloudflare.yml).
 on:
+  push:
+    branches: [main]
+    paths:
+      - "web/install/**"
+      - "include/version.h"
+      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
@@ -46,6 +51,8 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
