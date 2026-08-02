@@ -38,3 +38,39 @@ jobs:
 
       - name: Build
         run: pnpm run build
+
+  package-macos:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: companion
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+          cache-dependency-path: companion/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Package DMG + ZIP
+        run: pnpm run dist
+        env:
+          # Unsigned local/CI builds — users Open once via right-click on first launch.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: touchdeck-companion-macos
+          path: |
+            companion/release/*.dmg
+            companion/release/*.zip
+          if-no-files-found: error

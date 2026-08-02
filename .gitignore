@@ -11,4 +11,5 @@ web/worker/public/
 secrets.ini
 companion/node_modules/
 companion/dist/
+companion/release/
 package-lock.json

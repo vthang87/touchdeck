@@ -1,3 +1,4 @@
+import { app } from "electron";
 import * as fs from "fs";
 import * as http from "http";
 import * as path from "path";
@@ -35,6 +36,10 @@ function resolveFile(root: string, urlPath: string): string | null {
 }
 
 export function webInstallRoot(): string {
+  // Packaged builds keep the installer outside the asar (extraResources).
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, "web-install");
+  }
   return path.join(__dirname, "web-install");
 }
 
