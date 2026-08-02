@@ -1,0 +1,16 @@
+#pragma once
+
+#ifndef FIRMWARE_VERSION
+#define FIRMWARE_VERSION "0.2.0"
+#endif
+
+#ifndef HARDWARE_REVISION
+#define HARDWARE_REVISION "JC8048W550C-R1"
+#endif
+
+#ifndef PROTOCOL_VERSION
+#define PROTOCOL_VERSION 3
+#endif
+
+#define FIRMWARE_BUILD_DATE __DATE__
+#define FIRMWARE_BUILD_TIME __TIME__

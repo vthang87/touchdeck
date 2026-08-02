@@ -1,0 +1,63 @@
+name: Deploy Cloudflare Worker
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - "web/**"
+      - "include/version.h"
+      - "scripts/sync-web-installer.sh"
+      - ".github/workflows/cloudflare.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: cloudflare-worker-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync installer assets
+        run: |
+          chmod +x scripts/sync-web-installer.sh
+          ./scripts/sync-web-installer.sh
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: web/worker/pnpm-lock.yaml
+
+      - name: Install worker dependencies
+        working-directory: web/worker
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck worker
+        working-directory: web/worker
+        run: pnpm run build
+
+      - name: Deploy production (main)
+        if: github.ref == 'refs/heads/main'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: web/worker
+          command: deploy --var GITHUB_REPOSITORY:${{ github.repository }}
+
+      - name: Deploy staging (dev)
+        if: github.ref == 'refs/heads/dev'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: web/worker
+          command: deploy --env dev --var GITHUB_REPOSITORY:${{ github.repository }}

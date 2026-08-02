@@ -1,0 +1,19 @@
+{
+  "name": "touchdeck-installer-worker",
+  "private": true,
+  "scripts": {
+    "prebuild": "cd ../.. && ./scripts/sync-web-installer.sh",
+    "build": "tsc --noEmit",
+    "dev": "pnpm run prebuild && wrangler dev",
+    "deploy": "pnpm run prebuild && wrangler deploy",
+    "check": "wrangler check"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260801.1",
+    "typescript": "^5.6.3",
+    "wrangler": "^4.28.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "workerd"]
+  }
+}

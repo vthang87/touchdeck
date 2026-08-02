@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "touchdeck-installer",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  "vars": {
+    "GITHUB_REPOSITORY": "vthang87/touchdeck"
+  },
+  "env": {
+    "dev": {
+      "name": "touchdeck-installer-dev",
+      "vars": {
+        "GITHUB_REPOSITORY": "vthang87/touchdeck"
+      }
+    }
+  }
+}

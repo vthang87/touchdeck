@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src ws: wss: http: https:; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+  <title>TouchDeck Companion</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { font-family: system-ui, sans-serif; background: #0b1220; color: #e2e8f0; margin: 0; padding: 20px; }
+    h1 { font-size: 1.25rem; margin: 0 0 6px; }
+    h2 { font-size: 1.05rem; margin: 0 0 10px; }
+    p, .hint { color: #94a3b8; line-height: 1.45; font-size: .9rem; }
+    .tabs { display: flex; gap: 6px; margin: 14px 0 12px; }
+    .tab { padding: 8px 14px; border: 0; border-radius: 8px; background: #1e293b; color: #94a3b8; font-weight: 600; cursor: pointer; }
+    .tab.active { background: #38bdf8; color: #0b1220; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .row { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; margin: 12px 0; }
+    .form { display: grid; gap: 10px; max-width: 520px; }
+    .form.wide { max-width: none; }
+    label { display: block; font-size: .8rem; color: #94a3b8; margin-bottom: 4px; }
+    input, select { padding: 10px 12px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: #f8fafc; width: 100%; box-sizing: border-box; }
+    select.inline { width: auto; min-width: 220px; }
+    input.inline { width: auto; }
+    .check { display: flex; align-items: center; gap: 10px; color: #e2e8f0; font-size: .95rem; }
+    .check input { width: 18px; height: 18px; padding: 0; accent-color: #38bdf8; }
+    button { padding: 10px 14px; border: 0; border-radius: 8px; background: #38bdf8; color: #0b1220; font-weight: 700; cursor: pointer; }
+    button.secondary { background: #334155; color: #e2e8f0; }
+    button.danger { background: #7f1d1d; color: #fecaca; }
+    button:disabled { opacity: .5; cursor: default; }
+    #grid { display: grid; gap: 10px; margin-top: 12px; }
+    .tile { border: 1px solid #334155; border-radius: 12px; padding: 10px; display: grid; gap: 6px; background: #111827; transition: outline .12s, opacity .12s, transform .12s; }
+    .tile.dragging { opacity: .45; outline: 2px dashed #38bdf8; }
+    .tile.drag-over { outline: 2px solid #38bdf8; transform: scale(1.01); }
+    .tile-head { display: flex; align-items: center; gap: 8px; }
+    .tile-handle { cursor: grab; user-select: none; color: #64748b; font-size: 1.1rem; padding: 2px 6px; border-radius: 6px; background: #1e293b; }
+    .tile-handle:active { cursor: grabbing; }
+    .tile h3 { margin: 0; font-size: .95rem; flex: 1; }
+    #log { margin-top: 12px; background: #111827; border: 1px solid #334155; border-radius: 8px; padding: 12px; height: 220px; overflow: auto; font-family: ui-monospace, monospace; font-size: 12px; white-space: pre-wrap; }
+    .ok { color: #4ade80; } .err { color: #f87171; } .info { color: #94a3b8; }
+    .msg { min-height: 1.2em; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <h1>TouchDeck Companion</h1>
+  <p>Scan, connect, and configure the board without opening the web portal.</p>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="connect">Connect</button>
+    <button class="tab" data-tab="grid">Grid</button>
+    <button class="tab" data-tab="device">Device</button>
+  </div>
+
+  <section id="panel-connect" class="panel active">
+    <div class="row">
+      <div>
+        <label for="devices">Found devices</label>
+        <select id="devices" class="inline"><option value="">Scanning…</option></select>
+      </div>
+      <button class="secondary" id="scan">Scan</button>
+      <div>
+        <label for="host">Board host</label>
+        <input id="host" class="inline" size="22" />
+      </div>
+      <div>
+        <label for="port">WS port</label>
+        <input id="port" class="inline" size="5" />
+      </div>
+      <button id="connect">Connect</button>
+      <button class="secondary" id="disconnect" disabled>Disconnect</button>
+    </div>
+    <div id="log"></div>
+  </section>
+
+  <section id="panel-grid" class="panel">
+    <p class="hint">Kéo biểu tượng ⋮⋮ trên mỗi tile để đổi vị trí. Nhớ Save grid để đẩy lên board.</p>
+    <div class="row">
+      <div>
+        <label>Columns</label>
+        <select id="cols" class="inline"></select>
+      </div>
+      <div>
+        <label>Rows</label>
+        <select id="rows" class="inline"></select>
+      </div>
+      <button id="grid-load">Reload</button>
+      <button id="grid-save">Save grid</button>
+      <button class="danger" id="grid-reset">Reset defaults</button>
+    </div>
+    <div class="row">
+      <div>
+        <label for="icon-id">Custom icon ID</label>
+        <input id="icon-id" class="inline" maxlength="15" placeholder="e.g. notion" />
+      </div>
+      <div>
+        <label for="icon-file">PNG file</label>
+        <input id="icon-file" class="inline" type="file" accept="image/png,image/*" />
+      </div>
+      <div>
+        <label for="icon-size">Size</label>
+        <select id="icon-size" class="inline">
+          <option value="64">64 px</option>
+          <option value="96" selected>96 px</option>
+          <option value="128">128 px</option>
+        </select>
+      </div>
+      <button id="icon-upload">Upload icon to SD</button>
+    </div>
+    <div class="msg" id="icon-msg"></div>
+    <div id="grid"></div>
+    <div class="msg" id="grid-msg"></div>
+  </section>
+
+  <section id="panel-device" class="panel">
+    <form class="form" id="device-form">
+      <div>
+        <label for="device_name">Device name</label>
+        <input id="device_name" />
+      </div>
+      <div>
+        <label for="ble_name">Bluetooth name</label>
+        <input id="ble_name" />
+      </div>
+      <div>
+        <label for="hostname">Hostname</label>
+        <input id="hostname" />
+      </div>
+      <div>
+        <label for="wifi_ssid">Wi‑Fi SSID</label>
+        <input id="wifi_ssid" />
+      </div>
+      <div>
+        <label for="wifi_password">Wi‑Fi password</label>
+        <input id="wifi_password" type="password" placeholder="leave blank to keep" />
+      </div>
+      <div>
+        <label for="ota_password">OTA password</label>
+        <input id="ota_password" type="password" placeholder="leave blank to keep" />
+      </div>
+      <label class="check"><input type="checkbox" id="ble_enabled" /> Bluetooth enabled</label>
+      <p class="hint">BLE connected = volume shows macOS HUD. BLE off/disconnected = volume uses companion 3% over Wi‑Fi (no HUD). Mute/play/next/prev need BLE.</p>
+      <label class="check"><input type="checkbox" id="ble_pair_mode" /> Pairing mode</label>
+      <p class="hint">On = discoverable for pairing / reconnect. Off = hide from Bluetooth scan.</p>
+      <div>
+        <label for="idle_dim_s">Idle dim (seconds)</label>
+        <input id="idle_dim_s" type="number" min="0" max="65535" />
+      </div>
+      <div>
+        <label for="idle_dim_pct">Dim brightness (%)</label>
+        <input id="idle_dim_pct" type="number" min="1" max="100" />
+      </div>
+      <div>
+        <label for="idle_clock_s">Idle clock (seconds)</label>
+        <input id="idle_clock_s" type="number" min="0" max="86400" />
+      </div>
+      <div>
+        <label for="idle_dim2_s">Idle dim 2 (seconds)</label>
+        <input id="idle_dim2_s" type="number" min="0" max="65535" />
+      </div>
+      <div>
+        <label for="idle_dim2_pct">Dim 2 brightness (%)</label>
+        <input id="idle_dim2_pct" type="number" min="1" max="100" />
+      </div>
+      <div>
+        <label for="idle_off_s">Screen off (seconds)</label>
+        <input id="idle_off_s" type="number" min="0" max="65535" />
+      </div>
+      <div>
+        <label for="clock_font_px">Clock font size</label>
+        <select id="clock_font_px">
+          <option value="48">48 px</option>
+          <option value="72">72 px</option>
+          <option value="96">96 px</option>
+          <option value="128">128 px</option>
+          <option value="160">160 px</option>
+        </select>
+      </div>
+      <p class="hint">Defaults: dim 30s at 30% → clock 120s → dim2 300s at 30% → off 1800s. Set a timeout to 0 to disable that stage.</p>
+      <div class="row">
+        <button type="button" id="device-load">Reload</button>
+        <button type="button" id="device-save">Save & restart board</button>
+      </div>
+      <div class="msg" id="device-msg"></div>
+    </form>
+  </section>
+
+  <script src="./app.js"></script>
+</body>
+</html>

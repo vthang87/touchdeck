@@ -1,0 +1,11 @@
+{
+  "name": "touchdeck-web",
+  "private": true,
+  "scripts": {
+    "serve": "npx --yes serve install -p 8787 --cors",
+    "prepare-firmware": "../scripts/prepare-web-firmware.sh",
+    "sync": "../scripts/sync-web-installer.sh",
+    "worker:dev": "cd worker && pnpm run dev",
+    "worker:deploy": "cd worker && pnpm run deploy"
+  }
+}

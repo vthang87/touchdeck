@@ -1,0 +1,75 @@
+name: Firmware
+
+on:
+  push:
+    branches: [main, dev]
+    tags: ["v*"]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+concurrency:
+  group: firmware-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio/.cache
+            ~/.platformio/packages
+          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            pio-${{ runner.os }}-
+
+      - name: Setup PlatformIO
+        uses: platformio/platformio-core@v6
+
+      - name: Build firmware (usb)
+        run: pio run -e usb
+
+      - name: Package bundle
+        env:
+          RELEASE_DIR: dist/release
+        run: |
+          chmod +x scripts/package-firmware-bundle.sh
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            export VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          ./scripts/package-firmware-bundle.sh web/install/firmware
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: touchdeck-firmware
+          path: |
+            dist/release/
+            web/install/manifest.json
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: touchdeck-firmware
+          path: dist
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/release/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true
