@@ -51,6 +51,6 @@
     "dmg": {
       "title": "TouchDeck Companion"
     },
-    "artifactName": "${productName}-${version}-${arch}.${ext}"
+    "artifactName": "TouchDeck-Companion-${version}-mac-${arch}.${ext}"
   }
 }

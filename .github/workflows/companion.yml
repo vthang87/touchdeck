@@ -3,6 +3,7 @@ name: Companion
 on:
   push:
     branches: [main, dev]
+    tags: ["v*"]
     paths:
       - "companion/**"
       - "web/install/**"
@@ -74,3 +75,23 @@ jobs:
             companion/release/*.dmg
             companion/release/*.zip
           if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: package-macos
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download macOS package
+        uses: actions/download-artifact@v4
+        with:
+          name: touchdeck-companion-macos
+          path: companion-dist
+
+      - name: Attach Companion to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: companion-dist/*
+          fail_on_unmatched_files: true
+          # Firmware workflow may already have created this tag's release.

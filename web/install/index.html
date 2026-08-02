@@ -174,6 +174,7 @@
         </p>
         <div class="cta">
           <a class="btn" href="setup.html">Cài firmware (USB)</a>
+          <a class="btn ghost" href="https://github.com/vthang87/touchdeck/releases/latest/download/TouchDeck-Companion-0.2.0-mac-arm64.dmg">Tải Companion (Mac)</a>
           <a class="btn ghost" href="#huong-dan">Xem hướng dẫn</a>
         </div>
       </div>
@@ -265,18 +266,18 @@
       </ol>
 
       <h3>4. Companion trên Mac</h3>
-      <p>Cách nhanh: đóng gói rồi mở file <code>.dmg</code> (không cần <code>pnpm start</code> mỗi lần):</p>
-      <pre style="background:#0a0f1a;border:1px solid var(--line);border-radius:12px;padding:14px;overflow:auto;color:#bae6fd;font-size:0.88rem"><code>cd companion
-pnpm install
-pnpm run dist
-# → companion/release/TouchDeck Companion-*.dmg</code></pre>
-      <p>Kéo app vào Applications → mở từ menu bar. Lần đầu nếu macOS chặn: chuột phải → Open.</p>
-      <p>Hoặc chạy từ source khi đang phát triển:</p>
-      <pre style="background:#0a0f1a;border:1px solid var(--line);border-radius:12px;padding:14px;overflow:auto;color:#bae6fd;font-size:0.88rem"><code>cd companion && pnpm install && pnpm start</code></pre>
+      <p>Tải bản đóng gói rồi mở — không cần Node/pnpm:</p>
+      <div class="cta" style="margin: 12px 0 16px;">
+        <a class="btn" href="https://github.com/vthang87/touchdeck/releases/latest/download/TouchDeck-Companion-0.2.0-mac-arm64.dmg">Tải Companion (DMG · Apple Silicon)</a>
+        <a class="btn ghost" href="https://github.com/vthang87/touchdeck/releases/latest">Mọi bản phát hành</a>
+      </div>
       <ol>
-        <li>Tab Connect → Scan / nhập <code>touchdeck.local</code> port <code>81</code> → Connect</li>
-        <li>Accessibility: bật TouchDeck Companion (cho cảnh báo Cursor/Codex)</li>
+        <li>Mở file <code>.dmg</code> → kéo <strong>TouchDeck Companion.app</strong> vào Applications.</li>
+        <li>Chạy app (hiện trên menu bar). Lần đầu nếu macOS chặn: chuột phải → <strong>Open</strong>.</li>
+        <li>Tab Connect → Scan / nhập <code>touchdeck.local</code> port <code>81</code> → Connect.</li>
+        <li>Accessibility: bật TouchDeck Companion (cho cảnh báo Cursor/Codex).</li>
       </ol>
+      <p class="meta" style="margin-top:10px">Intel Mac hoặc tự build: xem <a href="https://github.com/vthang87/touchdeck#macos-companion">README</a> (<code>pnpm run dist</code>).</p>
       <figure class="shot-sm" style="max-width:520px;margin-top:12px">
         <img src="assets/companion-ui.png" alt="TouchDeck Companion" />
       </figure>

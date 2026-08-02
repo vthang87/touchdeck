@@ -107,17 +107,19 @@ Chi tiết: [`web-install.md`](web-install.md).
 
 ### 3.4 Companion trên Mac
 
+**Tải nhanh (Apple Silicon):**  
+[TouchDeck-Companion-0.2.0-mac-arm64.dmg](https://github.com/vthang87/touchdeck/releases/latest/download/TouchDeck-Companion-0.2.0-mac-arm64.dmg) · [Tất cả releases](https://github.com/vthang87/touchdeck/releases/latest)
+
+1. Mở `.dmg` → kéo **TouchDeck Companion.app** vào Applications  
+2. Chạy app (menu bar). Lần đầu nếu macOS chặn: chuột phải → **Open**  
+3. Tab **Connect** → Scan / `touchdeck.local` port `81` → **Connect**  
+4. Accessibility → bật TouchDeck Companion (cảnh báo Cursor/Codex)
+
+Tự build / Intel Mac:
+
 ```bash
-cd companion
-pnpm install
-pnpm run dist          # → companion/release/*.dmg
-# hoặc dev: pnpm start
+cd companion && pnpm install && pnpm run dist
 ```
-
-Mở `.dmg` → kéo **TouchDeck Companion.app** vào Applications.
-
-1. Tab **Connect** → Scan hoặc nhập `touchdeck.local`, port `81` → **Connect**
-2. System Settings → Privacy & Security → **Accessibility** → bật TouchDeck Companion (cần cho cảnh báo approve Cursor/Codex)
 
 ![TouchDeck Companion](images/companion-ui.png)
 
@@ -225,3 +227,9 @@ Mật khẩu OTA mặc định: `touchdeck` (đổi trong portal). Chi tiết: [
 | `images/companion-ui.png` | TouchDeck Companion |
 | `images/web-installer.png` | GitHub Pages installer |
 | `images/home-grid-mock.html` | Mock HTML (tham khảo, không còn dùng làm ảnh chính) |
+
+---
+
+## License
+
+[MIT](../LICENSE) © 2026 Thang Dang

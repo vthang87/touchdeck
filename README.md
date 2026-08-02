@@ -67,17 +67,18 @@ macOS reserves BLE HID peripherals: once the board is paired as a keyboard for m
 
 ### Cài nhanh (file đóng gói)
 
+- **Apple Silicon DMG:** [TouchDeck-Companion-0.2.0-mac-arm64.dmg](https://github.com/vthang87/touchdeck/releases/latest/download/TouchDeck-Companion-0.2.0-mac-arm64.dmg)
+- **Releases:** https://github.com/vthang87/touchdeck/releases/latest
+
+Mở `.dmg` → kéo **TouchDeck Companion.app** vào Applications → double-click (menu bar).
+
+Lần đầu macOS có thể chặn app chưa ký: **Privacy & Security → Open Anyway**, hoặc chuột phải → Open.
+
+Tự đóng gói:
+
 ```bash
-cd companion
-pnpm install
-pnpm run dist          # → companion/release/TouchDeck Companion-0.2.0-*.dmg
+cd companion && pnpm install && pnpm run dist
 ```
-
-Mở file `.dmg` → kéo **TouchDeck Companion.app** vào Applications → double-click chạy (menu bar).
-
-Lần đầu macOS có thể chặn app chưa ký: **System Settings → Privacy & Security → Open Anyway**, hoặc chuột phải → Open.
-
-CI cũng upload artifact `touchdeck-companion-macos` (DMG + ZIP) trên mỗi push đổi companion.
 
 ### Chạy từ source (dev)
 
