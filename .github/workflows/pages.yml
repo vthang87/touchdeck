@@ -7,7 +7,7 @@ on:
     paths:
       - "web/install/**"
       - "docs/images/**"
-      - "include/version.h"
+      - "firmware/include/version.h"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -45,7 +45,7 @@ jobs:
           FIRMWARE_BASE_URL: https://github.com/${{ github.repository }}/releases/latest/download
         run: |
           chmod +x scripts/package-firmware-bundle.sh
-          VERSION=$(grep -E '^#define FIRMWARE_VERSION' include/version.h | sed 's/.*"\(.*\)".*/\1/')
+          VERSION=$(grep -E '^#define FIRMWARE_VERSION' firmware/include/version.h | sed 's/.*"\(.*\)".*/\1/')
           export VERSION FIRMWARE_BASE_URL
           python3 - <<'PY'
           import json, os

@@ -1,6 +1,6 @@
 # TouchDeck — Giới thiệu hệ thống & Hướng dẫn sử dụng
 
-TouchDeck là bàn phím cảm ứng 7" (board **JC8048W550C**, ESP32-S3) dùng để mở app trên macOS, chỉnh volume/media và nhận thông báo duyệt lệnh từ Cursor/Codex — cấu hình qua Companion hoặc web portal.
+TouchDeck là bàn phím cảm ứng 7" (board **JC8048W550C**, ESP32-S3) dùng để mở app trên macOS và chỉnh volume/media qua Companion Tauri (BLE GATT) — cấu hình qua Companion hoặc web portal.
 
 | | |
 |---|---|
@@ -16,27 +16,21 @@ TouchDeck là bàn phím cảm ứng 7" (board **JC8048W550C**, ESP32-S3) dùng 
 
 ```mermaid
 flowchart LR
-  touch[TouchDeck LCD + GT911] -->|BLE HID| macMedia[macOS volume / media]
-  touch -->|WebSocket :81| companion[TouchDeck Companion]
-  companion -->|open bundle/path| apps[Apps trên Mac]
-  companion -->|volume sync / approve| touch
-  browser[Chrome / Companion] -->|HTTP| portal[Config portal + /grid]
-  portal --> touch
+  touch[TouchDeck LCD + GT911] -->|GATT tile_press action_id| companion[TouchDeck Companion Tauri]
+  companion -->|open / volume / media| mac[macOS]
+  companion -->|GATT volume UI| touch
+  browser[Chrome] -->|HTTP portal OTA icons| touch
 ```
 
 | Thành phần | Vai trò |
 |---|---|
-| **Firmware trên board** | UI LVGL (grid / đồng hồ idle), BLE HID, Wi‑Fi, WebSocket, portal, OTA |
-| **TouchDeck Companion** (Electron, macOS) | Nhận `tile_press`, mở app; đồng bộ volume; đẩy cảnh báo approve Cursor/Codex |
-| **Config portal** | Cấu hình Wi‑Fi, Bluetooth, idle, tên thiết bị |
-| **Grid editor** | Sửa lưới nút, icon SD, action (media / mở app) |
-| **Web installer** | Flash firmware qua USB bằng Chrome/Edge |
+| **Firmware trên board** | UI LVGL, BLE GATT peripheral, Wi‑Fi portal / OTA / icon |
+| **TouchDeck Companion** (Tauri, macOS) | Scan/connect BLE, map `action_id` → mở app / volume / media / keyboard |
+| **Config portal** | Wi‑Fi, Bluetooth pairing, idle, tên thiết bị |
+| **Grid editor** | Lưới nút + `action_id` (+ legacy target tùy chọn) |
+| **Web installer** | Flash firmware qua USB (Chrome/Edge) |
 
-Hai đường kết nối độc lập:
-
-- **Bluetooth (BLE HID)** — phím media hệ thống (volume có HUD macOS, mute / play / next / prev).
-- **Wi‑Fi (WebSocket)** — mở app và đồng bộ trạng thái qua Companion. Không cần GATT (macOS khóa GATT khi board đã là HID).
-
+Kênh chính: **Bluetooth GATT**. Wi‑Fi chỉ còn portal / OTA / icon — không còn WebSocket launch.
 ---
 
 ## 2. Màn hình trên desk
@@ -58,9 +52,9 @@ Cấu hình hiện tại trên thiết bị: **5×2**, tên **Thang Dev**, volum
 
 | Icon | Ý nghĩa |
 |---|---|
-| Volume % | Mức loa Mac (Companion đẩy qua WS) |
-| Bluetooth | Xanh = đã ghép HID; `pair` / `idle` / `off` khi chưa sẵn sàng |
-| ⇅ | Xanh = có Companion WS; xám = chưa kết nối → **nút mở app bị mờ** |
+| Volume % | Mức loa Mac (Companion đẩy qua GATT) |
+| Bluetooth | Xanh = GATT central đã nối; `pair` / `idle` / `off` |
+| ⇅ | Xanh = companion GATT linked; xám = chưa nối → tile host bị mờ |
 | Wi‑Fi | Xanh = STA; vàng = đang AP setup |
 
 Hàng trên: Vol − / Mute / Vol + / Telegram / Safari  
@@ -99,31 +93,44 @@ Chi tiết: [`web-install.md`](web-install.md).
 
 ![Portal cấu hình Wi‑Fi / thiết bị](images/device-settings.png)
 
-### 3.3 Bluetooth (media)
+### 3.3 Bluetooth (GATT)
 
-1. Bật **Bluetooth enabled** (+ **Pairing mode** lần đầu)
-2. Trên Mac: System Settings → Bluetooth → ghép **TouchDeck** / **TouchDeck‑XXXX**
-3. Volume Up/Down lúc đã ghép sẽ hiện **HUD** macOS
+1. Trên board: bật **Bluetooth enabled** (+ **Pairing mode** lần đầu) trong portal / Companion → **Device**
+2. Trên Mac: cấp quyền **Bluetooth** cho TouchDeck Companion (System Settings → Privacy & Security → Bluetooth)
+3. Companion → **Scan BLE** → **Connect** tới `TouchDeck-XXXX`
 
-### 3.4 Companion trên Mac
+Không ghép như bàn phím HID — Companion là GATT central. Volume/media do app xử lý (không có HUD hệ thống).
+
+### 3.4 Companion trên Mac (Tauri)
 
 **Tải nhanh (Apple Silicon):**  
-[TouchDeck-Companion-0.2.0-mac-arm64.dmg](https://github.com/vthang87/touchdeck/releases/latest/download/TouchDeck-Companion-0.2.0-mac-arm64.dmg) · [Tất cả releases](https://github.com/vthang87/touchdeck/releases/latest)
+[TouchDeck-Companion-0.3.0-mac-arm64.dmg](https://github.com/vthang87/touchdeck/releases/latest/download/TouchDeck-Companion-0.3.0-mac-arm64.dmg) · [Tất cả releases](https://github.com/vthang87/touchdeck/releases/latest)
 
 1. Mở `.dmg` → kéo **TouchDeck Companion.app** vào Applications  
-2. Chạy app (menu bar). Lần đầu nếu macOS chặn: chuột phải → **Open**  
-3. Tab **Connect** → Scan / `touchdeck.local` port `81` → **Connect**  
-4. Accessibility → bật TouchDeck Companion (cảnh báo Cursor/Codex)
+2. Chạy app. Lần đầu nếu macOS chặn: chuột phải → **Open** / Privacy & Security → Open Anyway  
+3. Tab **Connect** → **Scan BLE** → Connect  
+4. Cấp **Accessibility** (media / keyboard / volume simulation)
 
-Tự build / Intel Mac:
+Tabs hữu ích:
+
+| Tab | Việc làm |
+|---|---|
+| **Connect** | Scan/Connect BLE, virtual keyboard, auto-reconnect |
+| **Grid** / **Device** | Cấu hình board qua Wi‑Fi (`touchdeck.local`) |
+| **Profile** | Map `action_id` → open_app / media / volume / keyboard |
+| **Log** | Sự kiện GATT / lỗi |
+
+Tự build:
 
 ```bash
 cd companion && pnpm install && pnpm run dist
 ```
 
+Source Electron cũ (WebSocket): [`../archive/companion-electron/`](../archive/companion-electron/).
+
 ![TouchDeck Companion](images/companion-ui.png)
 
-Khi WS đã nối, icon ⇅ trên màn hình xanh và các nút mở app sáng lại.
+Khi GATT đã nối, icon ⇅ trên màn hình xanh và các nút mở app sáng lại.
 
 ---
 
@@ -131,16 +138,13 @@ Khi WS đã nối, icon ⇅ trên màn hình xanh và các nút mở app sáng l
 
 ### 4.1 Mở ứng dụng
 
-Chạm tile **App** (Telegram, Safari, Cursor…). Companion chạy `/usr/bin/open` với bundle ID hoặc đường dẫn `.app`.
+Chạm tile **App** — Companion nhận GATT `tile_press` với `action_id` và chạy `/usr/bin/open` theo map SQLite.
 
-Nếu tile **mờ**: Companion chưa kết nối WS — mở Companion và Connect lại.
+Nếu tile **mờ**: Companion chưa nối BLE — Scan + Connect lại.
 
 ### 4.2 Volume & media
 
-| Hành động | BLE đã nối | Chỉ Wi‑Fi (Companion) |
-|---|---|---|
-| Vol ± | BLE HID + HUD macOS | Bước 3% qua Companion (không HUD) |
-| Mute / Play / Next / Prev | BLE HID | Tile **disabled** nếu không có BLE |
+Tất cả media/volume do Companion xử lý (không còn BLE HID trên board). Volume ± khoảng 3%, **không có HUD hệ thống** macOS. Mute / play / next / prev cần quyền **Accessibility**.
 
 ### 4.3 Màn hình nghỉ (idle)
 
@@ -159,24 +163,21 @@ Cỡ chữ đồng hồ: **Clock font size** (48 / 72 / 96 / 128 / 160 px).
 
 ### 4.4 Cảnh báo duyệt Cursor / Codex
 
-Khi Mac chờ Approve, Companion đẩy notification → deck hiện banner, highlight tile Cursor/Codex, đánh thức màn nếu đang idle.  
-Xem [`approval-notifications.md`](approval-notifications.md).
+Chưa nằm trong MVP v4 (GATT). Bản Electron cũ (`archive/companion-electron/`) dùng WebSocket — xem [`approval-notifications.md`](approval-notifications.md) (legacy).
 
 ---
 
 ## 5. Tuỳ chỉnh lưới nút
 
-Mở http://touchdeck.local/grid (hoặc Companion → tab **Grid**):
-
-![Grid editor](images/grid-editor.png)
+Mở http://touchdeck.local/grid:
 
 1. Chọn **Columns** / **Rows** (2–5 × 1–3)
-2. Mỗi ô: `label`, `icon`, `color`, `action` (`volume_*` / `mute` / `app` / …)
-3. Action `app` → `target kind` = `bundle` hoặc `path` + giá trị (vd. `com.apple.Safari`)
-4. Upload PNG icon lên thẻ SD nếu cần → chọn icon id
-5. **Save to device** — áp dụng ngay, không reboot
+2. Mỗi ô: `label`, `icon`, `color`, `action`, **`action_id`**
+3. Action `app` có thể giữ legacy `target` (bundle/path) để gợi ý; Companion map theo `action_id`
+4. Upload PNG icon lên thẻ SD nếu cần
+5. **Save to device** — áp dụng ngay
 
-Kéo-thả đổi vị trí có trên Companion (tab Grid).
+Companion tab **Profile** chỉnh map `action_id` → bundle / media / keyboard. Tab **Grid** / **Device** chỉnh board qua HTTP (cùng API portal).
 
 ---
 
@@ -185,10 +186,10 @@ Kéo-thả đổi vị trí có trên Companion (tab Grid).
 | Cách | Lệnh / URL |
 |---|---|
 | USB Web Installer | https://vthang87.github.io/touchdeck/setup.html |
-| PlatformIO USB | `pio run -e usb -t upload` |
-| OTA | `pio run -e ota -t upload --upload-port touchdeck.local` |
+| PlatformIO USB | `cd firmware && pio run -e usb -t upload` |
+| OTA | `cd firmware && pio run -e ota -t upload --upload-port touchdeck.local` |
 
-Mật khẩu OTA mặc định: `touchdeck` (đổi trong portal). Chi tiết: [`ota-process.md`](ota-process.md).
+Mật khẩu OTA mặc định: `touchdeck`. Chi tiết: [`ota-process.md`](ota-process.md).
 
 ---
 
@@ -196,22 +197,25 @@ Mật khẩu OTA mặc định: `touchdeck` (đổi trong portal). Chi tiết: [
 
 | Hiện tượng | Việc kiểm tra |
 |---|---|
-| Nút app mờ / không mở app | Companion đã Connect? Icon ⇅ xanh? Cùng mạng Wi‑Fi? |
-| Mute / media không chạy | BLE đã ghép? Tile media cần BLE |
-| Volume Wi‑Fi không có HUD | Đúng hành vi — bật BLE để có HUD |
-| Dim thành tắt hẳn | PWM backlight đã set 1 kHz; kiểm tra **Dim brightness %** ≥ ~20 |
+| Nút mờ / không mở app | Companion đã Connect BLE? Icon BT xanh? |
+| Mute / media không chạy | Accessibility cho Companion? |
+| Volume không có HUD | Đúng hành vi v4 (không BLE HID) |
+| Dim thành tắt hẳn | PWM backlight 1 kHz; **Dim brightness %** ≥ ~20 |
 | Wake bị bấm nhầm tile | Đã chặn; nhấc tay rồi chạm lại |
-| Portal không mở | Thử IP (vd. `192.168.0.183`); hoặc vào lại AP setup |
-| Flash Web Serial lỗi | Chrome/Edge, cáp data, chọn đúng cổng ESP32‑S3 |
+| Portal không mở | Thử IP hoặc AP setup |
+| Flash Web Serial lỗi | Chrome/Edge, cáp data, cổng ESP32‑S3 |
 
 ---
 
 ## 8. Tài liệu kỹ thuật liên quan
 
+- [`../companion/README.md`](../companion/README.md) — companion Tauri
+- [`../archive/companion-electron/`](../archive/companion-electron/) — companion Electron (legacy)
+- [`../protocol/gatt.md`](../protocol/gatt.md) — GATT protocol v4
 - [`provisioning.md`](provisioning.md) — Wi‑Fi / BLE setup
 - [`web-install.md`](web-install.md) — flash qua trình duyệt
-- [`ble-protocol.md`](ble-protocol.md) — WebSocket / protocol v3
-- [`approval-notifications.md`](approval-notifications.md) — Cursor/Codex → deck
+- [`ble-protocol.md`](ble-protocol.md) — legacy v3 notes
+- [`approval-notifications.md`](approval-notifications.md) — approve (legacy / phase sau)
 - [`ota-process.md`](ota-process.md) — OTA
 - [`cloudflare-worker.md`](cloudflare-worker.md) — deploy installer (tuỳ chọn)
 

@@ -44,9 +44,9 @@ Script sẽ:
    - `partitions.bin` → `0x8000`
    - `boot_app0.bin` → `0xE000` (từ Arduino-ESP32 SDK)
    - `firmware.bin` → `0x10000`
-3. Cập nhật `version` trong `manifest.json` từ `include/version.h`
+3. Cập nhật `version` trong `manifest.json` từ `firmware/include/version.h`
 
-Offsets khớp `partitions_16MB.csv`.
+Offsets khớp `firmware/partitions_16MB.csv`.
 
 ## Chạy trang cài đặt
 
@@ -70,19 +70,7 @@ Chi tiết: [`docs/cloudflare-worker.md`](cloudflare-worker.md)
 
 Manifest trên Pages trỏ `firmwareBaseUrl` tới `releases/latest/download` — không cần file `.bin` trong repo.
 
-### Cách 3 — Companion (local)
-
-```bash
-cd companion
-pnpm install
-pnpm start
-```
-
-Menu bar TouchDeck → **Flash ESP (browser)** → mở `http://127.0.0.1:8787/`
-
-Companion tự serve thư mục `dist/web-install/` (copy từ `web/install/` khi build).
-
-### Cách 4 — HTTP server độc lập
+### Cách 3 — HTTP server local
 
 ```bash
 cd web
@@ -90,7 +78,7 @@ pnpm install   # lần đầu
 pnpm serve     # http://127.0.0.1:8787
 ```
 
-Mở URL trên trong Chrome/Edge.
+Mở URL trên trong Chrome/Edge. Companion Tauri **không** còn serve web-installer (Electron cũ có menu Flash ESP — xem `archive/companion-electron/`).
 
 ## Quy trình flash
 
@@ -139,7 +127,7 @@ sequenceDiagram
 }
 ```
 
-`flashMode` / `flashFreq` khớp `boards/jc8048w550c.json` (`qio`, 80 MHz).
+`flashMode` / `flashFreq` khớp `firmware/boards/jc8048w550c.json` (`qio`, 80 MHz).
 
 Trường tuỳ chọn `firmwareBaseUrl` — CI/Pages set URL tải binary từ GitHub Releases:
 
@@ -154,7 +142,7 @@ Trường tuỳ chọn `firmwareBaseUrl` — CI/Pages set URL tải binary từ 
 | **Deploy Cloudflare Worker** | `.github/workflows/cloudflare.yml` | push `main`, `dev` | Worker prod / staging |
 | **Web Installer (Pages)** | `.github/workflows/pages.yml` | push `main` only | GitHub Pages (production) |
 | **Firmware** | `.github/workflows/firmware.yml` | push `main`/`dev`, PR, tag `v*` | Build + Release |
-| **Companion** | `.github/workflows/companion.yml` | push/PR `main`/`dev` | `pnpm build` check |
+| **Companion** | `.github/workflows/companion.yml` | push/PR `main`/`dev`, tag `v*` | Tauri check + macOS DMG |
 
 ### Tạo Release firmware
 
@@ -165,7 +153,7 @@ git push origin v0.2.0
 
 Workflow **Firmware**:
 
-1. `pio run -e usb`
+1. `cd firmware && pio run -e usb`
 2. `scripts/package-firmware-bundle.sh` → `dist/release/`:
    - `bootloader.bin`, `partitions.bin`, `boot_app0.bin`, `firmware.bin`
    - `manifest.json`, `SHA256SUMS.txt`
@@ -182,7 +170,7 @@ Cần ít nhất **một Release** (tag `v*`) trước khi flash từ Pages — 
 ### CI tương đương local
 
 ```bash
-pio run -e usb
+cd firmware && pio run -e usb
 RELEASE_DIR=dist/release ./scripts/package-firmware-bundle.sh web/install/firmware
 ```
 
@@ -197,10 +185,8 @@ Không dùng cho lần flash đầu hoặc đổi partition table.
 | File | Vai trò |
 |---|---|
 | `web/install/installer.js` | `ESPLoader` + `Transport` từ esptool-js (CDN esm.sh), MD5 qua crypto-js |
-| `companion/src/web_install_server.ts` | Static HTTP server port 8787 |
-| `companion/src/main.ts` | Menu **Flash ESP (browser)**, start server on launch |
 | `scripts/package-firmware-bundle.sh` | Đóng gói `.bin` + manifest (dùng local & CI) |
-| `scripts/prepare-web-firmware.sh` | Build + package cho web local |
+| `scripts/prepare-web-firmware.sh` | Build firmware/ + package cho web local |
 | `.github/workflows/firmware.yml` | CI build + GitHub Release |
 | `.github/workflows/cloudflare.yml` | Deploy Worker (Cloudflare) |
 | `.github/workflows/pages.yml` | Deploy GitHub Pages |
@@ -217,8 +203,8 @@ Không dùng cho lần flash đầu hoặc đổi partition table.
 
 1. Board khởi động TouchDeck firmware.
 2. Cấu hình Wi‑Fi: AP `TouchDeck-Setup-XXXX` → `http://192.168.4.1/` hoặc portal trên STA.
-3. Companion: Connect WebSocket port 81.
-4. Cập nhật sau: OTA `pio run -e ota -t upload` hoặc flash lại qua web.
+3. Companion (Tauri): Scan BLE → Connect tới `TouchDeck-XXXX`.
+4. Cập nhật sau: OTA `cd firmware && pio run -e ota -t upload` hoặc flash lại qua web.
 
 ## Troubleshooting
 
@@ -234,11 +220,12 @@ Không dùng cho lần flash đầu hoặc đổi partition table.
 
 ## Bảo mật
 
-- Companion server bind `127.0.0.1` — không expose LAN.
+- Local `pnpm serve` bind `127.0.0.1` — không expose LAN.
 - GitHub Pages + Releases: binary public trên GitHub (phù hợp open-source firmware).
 
 ## Liên quan
 
 - [`README.md`](../README.md) — tổng quan project
+- [`../companion/README.md`](../companion/README.md) — companion Tauri
 - [`docs/provisioning.md`](provisioning.md) — Wi‑Fi sau flash
 - [`docs/ota-process.md`](ota-process.md) — OTA wireless update

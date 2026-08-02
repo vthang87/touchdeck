@@ -4,16 +4,16 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-BUILD="$ROOT/.pio/build/usb"
+BUILD="$ROOT/firmware/.pio/build/usb"
 DEST="${1:-$ROOT/web/install/firmware}"
-VERSION="${VERSION:-$(grep -E '^#define FIRMWARE_VERSION' "$ROOT/include/version.h" | sed 's/.*"\(.*\)".*/\1/')}"
+VERSION="${VERSION:-$(grep -E '^#define FIRMWARE_VERSION' "$ROOT/firmware/include/version.h" | sed 's/.*"\(.*\)".*/\1/')}"
 FIRMWARE_BASE_URL="${FIRMWARE_BASE_URL:-}"
 
 BOOT_APP0="${PLATFORMIO_HOME:-$HOME/.platformio}/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin"
 
 for f in "$BUILD/bootloader.bin" "$BUILD/partitions.bin" "$BUILD/firmware.bin"; do
   if [[ ! -f "$f" ]]; then
-    echo "error: missing $f — run 'pio run -e usb' first" >&2
+    echo "error: missing $f — run 'cd firmware && pio run -e usb' first" >&2
     exit 1
   fi
 done

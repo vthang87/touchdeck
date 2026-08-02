@@ -1,37 +1,19 @@
 # Provisioning
 
-## Board (ESP32)
+## Wi‑Fi
 
-1. Power on without saved Wi-Fi → AP `TouchDeck-Setup-XXXX` (password `touchdeck`)
-2. Browse `http://192.168.4.1/`
-3. Submit SSID, password, device name, BLE name, hostname, OTA password
-4. Device stores NVS (`provisioned=true`) and restarts into STA
-5. Factory reset: portal `/reset` or clear NVS
+1. Boot board → AP `TouchDeck-Setup-XXXX` (password `touchdeck`) if not provisioned
+2. Open `http://192.168.4.1` → enter STA SSID/password → Save (reboots)
+3. Portal then available at `http://touchdeck.local` (or device IP)
 
-BLE HID advertising starts regardless of Wi-Fi so volume control works during setup.
+Wi‑Fi is used for **portal, OTA, and icon upload** only (protocol v4).
 
-## macOS companion
+## Bluetooth (GATT)
 
-After the board is on your LAN:
+1. Enable Bluetooth + pairing mode in the portal (defaults on)
+2. Board advertises as `TouchDeck-XXXX`
+3. Open **TouchDeck Companion** → Scan BLE → Connect
 
-```bash
-cd companion
-pnpm install
-pnpm start
-```
+Tiles that need the host stay disabled until a GATT central is connected.
 
-1. Scan for `_touchdeck._tcp` or enter `touchdeck.local` port `81`
-2. Press **Connect** — confirm log shows `protocol 3`
-3. Pair BLE **TouchDeck-XXXX** separately for media keys (optional)
-
-### Accessibility (required for approval alerts)
-
-To push Cursor/Codex approval notifications to the deck:
-
-1. Open **System Settings → Privacy & Security → Accessibility**
-2. Enable **TouchDeck Companion**
-3. Restart the companion if macOS prompted on first scan
-
-Without this permission, volume sync and tile launch still work; only approval detection is disabled.
-
-See [`docs/approval-notifications.md`](approval-notifications.md) for the full detection and notification logic.
+There is **no BLE HID** keyboard profile in v4 — CoreBluetooth can use the custom GATT service normally on macOS.

@@ -25,7 +25,8 @@ jobs:
           path: |
             ~/.platformio/.cache
             ~/.platformio/packages
-          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+            firmware/.pio
+          key: pio-${{ runner.os }}-${{ hashFiles('firmware/platformio.ini') }}
           restore-keys: |
             pio-${{ runner.os }}-
 
@@ -38,6 +39,7 @@ jobs:
         run: pip install platformio
 
       - name: Build firmware (usb)
+        working-directory: firmware
         run: pio run -e usb
 
       - name: Package bundle

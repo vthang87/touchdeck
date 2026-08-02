@@ -5,7 +5,7 @@ on:
     branches: [main, dev]
     paths:
       - "web/**"
-      - "include/version.h"
+      - "firmware/include/version.h"
       - "scripts/sync-web-installer.sh"
       - ".github/workflows/cloudflare.yml"
   workflow_dispatch:

@@ -1,5 +1,7 @@
 # Thông báo approve request lên TouchDeck
 
+> **Legacy (Electron companion).** Logic này nằm trong `archive/companion-electron/`. Companion Tauri v4 hiện chưa mang feature này.
+
 Tài liệu mô tả toàn bộ logic đẩy thông báo **approval request** từ **Cursor** và **Codex** trên macOS lên màn hình TouchDeck.
 
 ## Tổng quan
@@ -62,7 +64,7 @@ Khi người dùng approve hoặc từ chối xong, companion gửi lệnh xóa 
 
 ### 1. Phát hiện approval trên Mac
 
-**File:** `companion/src/approval_watcher.ts`
+**File:** `archive/companion-electron/src/approval_watcher.ts`
 
 Companion chạy `scanApprovalRequests()` mỗi **2.5 giây** (`APPROVAL_POLL_MS` trong `main.ts`).
 
@@ -98,20 +100,20 @@ Parser chuyển thành object:
 
 ### 2. IPC main process → renderer
 
-**File:** `companion/src/main.ts`
+**File:** `archive/companion-electron/src/main.ts`
 
 - `startApprovalWatch()` chạy khi app khởi động.
 - Khi WebSocket connected (`set-connection-status` ≠ Disconnected), watcher tiếp tục poll.
 - Khi disconnected, gửi `{ pending: [] }` để xóa state.
 - Event IPC: `approval-update` với payload `{ pending: ApprovalPending[] }`.
 
-**File:** `companion/src/preload.ts`
+**File:** `archive/companion-electron/src/preload.ts`
 
 Expose `window.touchdeck.onApprovalUpdate(cb)` cho renderer.
 
 ### 3. Renderer gửi lên deck
 
-**File:** `companion/src/renderer/app.js`
+**File:** `archive/companion-electron/src/renderer/app.js`
 
 `syncApprovalsToDeck(pending)` so sánh `activeApprovals` (Map) với danh sách mới:
 
@@ -247,11 +249,11 @@ Handler `WStype_TEXT`, JSON tối đa **512 byte**, `StaticJsonDocument<512>`.
 
 | File | Vai trò |
 |---|---|
-| `companion/src/approval_watcher.ts` | AppleScript scan, parse, dedup key |
-| `companion/src/main.ts` | Poll timer, IPC `approval-update`, lifecycle |
-| `companion/src/preload.ts` | `onApprovalUpdate` bridge |
-| `companion/src/renderer/app.js` | `syncApprovalsToDeck()`, WebSocket send |
-| `companion/src/renderer/electron-api.d.ts` | Type definitions |
+| `archive/companion-electron/src/approval_watcher.ts` | AppleScript scan, parse, dedup key |
+| `archive/companion-electron/src/main.ts` | Poll timer, IPC `approval-update`, lifecycle |
+| `archive/companion-electron/src/preload.ts` | `onApprovalUpdate` bridge |
+| `archive/companion-electron/src/renderer/app.js` | `syncApprovalsToDeck()`, WebSocket send |
+| `archive/companion-electron/src/renderer/electron-api.d.ts` | Type definitions |
 
 ### Firmware (ESP32)
 

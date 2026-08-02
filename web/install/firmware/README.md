@@ -8,7 +8,7 @@ Place build artifacts here before serving the installer page.
 ./scripts/prepare-web-firmware.sh
 ```
 
-This runs `pio run -e usb` and copies:
+This runs `cd firmware && pio run -e usb` and copies:
 
 | File | Flash offset |
 |---|---|
@@ -28,5 +28,3 @@ pnpm serve
 ```
 
 Open http://127.0.0.1:8787 in **Chrome** or **Edge** (Web Serial required).
-
-Or use the TouchDeck Companion menu: **Flash ESP (browser)** — the companion serves this folder on port 8787 when built.

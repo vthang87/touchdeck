@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/web/install"
 DEST="$ROOT/web/worker/public"
-VERSION="${VERSION:-$(grep -E '^#define FIRMWARE_VERSION' "$ROOT/include/version.h" | sed 's/.*"\(.*\)".*/\1/')}"
+VERSION="${VERSION:-$(grep -E '^#define FIRMWARE_VERSION' "$ROOT/firmware/include/version.h" | sed 's/.*"\(.*\)".*/\1/')}"
 
 rm -rf "$DEST"
 mkdir -p "$DEST"

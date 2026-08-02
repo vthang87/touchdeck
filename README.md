@@ -1,129 +1,107 @@
 # TouchDeck
 
-Firmware for **JC8048W550C** (ESP32-S3, 800×480 RGB + GT911): configurable **LVGL app/media grid**, **BLE HID** media keys, **WebSocket** bridge to a macOS companion, Wi-Fi portal, and OTA.
+Firmware for **JC8048W550C** (ESP32-S3, 800×480 RGB + GT911): configurable **LVGL app/media grid**, **BLE GATT** events to a **Rust + Tauri** macOS companion, Wi-Fi portal/OTA/icons.
 
 Repository: https://github.com/vthang87/touchdeck
+
+Protocol **v4** — board is a thin device (`action_id` over GATT). The companion owns OpenApp / media / volume. No BLE HID on the board.
 
 ## Features
 
 - Customizable home grid (2–5 cols × 1–3 rows) with built-in icons/colors
-- Media tiles: volume / mute / play-pause / next / previous via **BLE HID**
-- App tiles: WebSocket `tile_press` → Electron companion opens bundle ID or `.app` path
-- **Approval alerts:** Cursor / Codex approve requests pushed to deck banner + tile highlight (protocol v3)
+- Media & app tiles: GATT `tile_press` → Companion Action Engine
+- Volume UI on the deck synced from the Mac over GATT Command
 - Web grid editor at `/grid` (AP `192.168.4.1` or STA `http://touchdeck.local/grid`)
-- Wi-Fi setup portal + ArduinoOTA
-- Grid profile stored on LittleFS (`/grid.json`)
-
-## Volume / media
-
-| Connection | How |
-|---|---|
-| USB cable | HID volume **disabled** on this board (GPIO19/20 = GT911 I2C) |
-| Bluetooth | Pair **TouchDeck-XXXX**; media tiles send HID Consumer Control |
+- Wi-Fi setup portal + ArduinoOTA + custom icons on SD
+- Grid profile on LittleFS (`/grid.json`) with `action_id` per tile
 
 ## Requirements
 
 - PlatformIO
 - JC8048W550C board (16 MB flash, OPI PSRAM)
 - USB-C data cable for first flash
-- Node.js 20+ for the companion (optional)
+- Node.js 20+ and Rust (for the Tauri companion)
 
 ## Build & flash (USB)
 
 ```bash
+cd firmware
 pio run -e usb -t upload
 pio device monitor -b 115200
 ```
 
-### Flash qua trình duyệt (không cần PlatformIO trên máy)
+### Flash qua trình duyệt
 
 ```bash
 ./scripts/prepare-web-firmware.sh   # build + copy .bin vào web/install/firmware/
 cd web && pnpm serve                # http://127.0.0.1:8787
 ```
 
-Hoặc TouchDeck Companion → menu **Flash ESP (browser)**.
-
-**GitHub:** tag `v*` → Release tự build; trang giới thiệu + HDSD trên **GitHub Pages**, flash tại `/setup.html`. Cloudflare Worker (tuỳ chọn) sync cùng `web/install/`.
+**GitHub:** tag `v*` → Release; intro + HDSD on **GitHub Pages**, flash at `/setup.html`.
 
 - Giới thiệu / HDSD: https://vthang87.github.io/touchdeck/
 - Cài firmware: https://vthang87.github.io/touchdeck/setup.html
-- Cloudflare: [`docs/cloudflare-worker.md`](docs/cloudflare-worker.md)
+- Protocol: [`protocol/gatt.md`](protocol/gatt.md)
 - Web install: [`docs/web-install.md`](docs/web-install.md)
 
 ## Grid editor
 
 1. Join AP `TouchDeck-Setup-XXXX` (password `touchdeck`) **or** connect the board to Wi-Fi
 2. Open `http://192.168.4.1/grid` or `http://touchdeck.local/grid`
-3. Edit cols/rows, labels, actions, bundle IDs → **Save to device** (no reboot)
+3. Set `action_id` (and optional legacy target) → **Save to device**
 
-API: `GET/POST /api/grid`, `POST /api/grid/reset`
+## macOS companion (Tauri)
 
-## macOS companion
+Primary link is **Bluetooth GATT** (not WebSocket).
 
-The companion talks to the board over **Wi-Fi (WebSocket, port 81)**, not Bluetooth.
+### Cài nhanh
 
-macOS reserves BLE HID peripherals: once the board is paired as a keyboard for media keys, Chromium/CoreBluetooth refuse GATT access to it. Wi-Fi sidesteps that entirely and lets HID keep working.
+- **Releases:** https://github.com/vthang87/touchdeck/releases/latest  
+  Artifact: `TouchDeck-Companion-0.3.0-mac-arm64.dmg` (version follows `companion/package.json`)
 
-### Cài nhanh (file đóng gói)
+Mở `.dmg` → kéo app vào Applications. Lần đầu: **Privacy & Security → Open Anyway**.
 
-- **Apple Silicon DMG:** [TouchDeck-Companion-0.2.0-mac-arm64.dmg](https://github.com/vthang87/touchdeck/releases/latest/download/TouchDeck-Companion-0.2.0-mac-arm64.dmg)
-- **Releases:** https://github.com/vthang87/touchdeck/releases/latest
+Grant:
 
-Mở `.dmg` → kéo **TouchDeck Companion.app** vào Applications → double-click (menu bar).
+- **Bluetooth**
+- **Accessibility** (media key simulation)
 
-Lần đầu macOS có thể chặn app chưa ký: **Privacy & Security → Open Anyway**, hoặc chuột phải → Open.
-
-Tự đóng gói:
-
-```bash
-cd companion && pnpm install && pnpm run dist
-```
-
-### Chạy từ source (dev)
+### Dev / package
 
 ```bash
 cd companion
 pnpm install
-pnpm start
+pnpm tauri dev          # development
+pnpm run dist           # .app + .dmg
 ```
 
-1. Provision the board's Wi-Fi so it shares your network (see grid editor section)
-2. Enter `touchdeck.local` (or the board IP) and port `81`, press **Connect**
-3. Tap an app tile — the companion runs `/usr/bin/open` with separated arguments, never a shell
-4. Grant **Accessibility** to TouchDeck Companion (System Settings → Privacy & Security) for approval detection
+1. Power the board with BLE pairing mode on
+2. Companion → **Scan BLE** → Connect to `TouchDeck-XXXX`
+3. Tap a tile — companion maps `action_id` via SQLite and runs OpenApp / volume / media
+4. Volume changes are pushed back to the deck header over GATT
 
-### Approval notifications (Cursor / Codex)
-
-When Cursor IDE or Codex Desktop waits for user approval on your Mac:
-
-1. Companion polls UI every 2.5s via AppleScript (`companion/src/approval_watcher.ts`)
-2. Sends `{"op":"notification",...}` over WebSocket
-3. Deck shows a pulsing banner, highlights the Cursor/Codex tile, and wakes the display if idle
-
-Full logic, protocol fields, file map, and troubleshooting: **[`docs/approval-notifications.md`](docs/approval-notifications.md)**
-
-Media tiles keep working through BLE HID even if the companion is closed.
+Electron companion (legacy WS) lives in [`archive/companion-electron/`](archive/companion-electron/) and is not shipped.
 
 ## OTA update
 
 ```bash
+cd firmware
 pio run -e ota -t upload --upload-port <hostname>.local
 ```
 
-Default OTA password: `touchdeck` (change in portal).
+Default OTA password: `touchdeck`.
 
 ## Docs
 
-- [`docs/huong-dan-su-dung.md`](docs/huong-dan-su-dung.md) — **Giới thiệu hệ thống + hướng dẫn sử dụng** (có ảnh)
-- [`docs/cloudflare-worker.md`](docs/cloudflare-worker.md) — deploy web installer lên Cloudflare Workers
-- [`docs/web-install.md`](docs/web-install.md) — cài firmware ESP qua Chrome/Edge (Web Serial)
-- [`docs/approval-notifications.md`](docs/approval-notifications.md) — approval alert flow (Cursor/Codex → deck)
-- [`docs/ble-protocol.md`](docs/ble-protocol.md) — BLE GATT & WebSocket protocol v3
-- [`docs/provisioning.md`](docs/provisioning.md) — Wi-Fi / device setup
-- [`docs/ota-process.md`](docs/ota-process.md) — OTA update flow
-- [`docs/jc8048w550c-platformio-wifi-ble-ota.md`](docs/jc8048w550c-platformio-wifi-ble-ota.md) — board architecture
+- [`docs/huong-dan-su-dung.md`](docs/huong-dan-su-dung.md) — giới thiệu + HDSD
+- [`docs/companion.md`](docs/companion.md) — companion Tauri overview
+- [`protocol/gatt.md`](protocol/gatt.md) — GATT protocol v4
+- [`docs/ble-protocol.md`](docs/ble-protocol.md) — legacy v3 notes (superseded)
+- [`docs/web-install.md`](docs/web-install.md) — Web Serial flash
+- [`docs/ota-process.md`](docs/ota-process.md) — OTA
+- [`docs/jc8048w550c-platformio-wifi-ble-ota.md`](docs/jc8048w550c-platformio-wifi-ble-ota.md) — board notes
+- [`archive/companion-electron/`](archive/companion-electron/) — legacy Electron companion
 
 ## License
 
-[MIT](LICENSE) © 2026 Thang Dang
+MIT — see [LICENSE](LICENSE).

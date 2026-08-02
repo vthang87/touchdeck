@@ -6,13 +6,13 @@ on:
     tags: ["v*"]
     paths:
       - "companion/**"
-      - "web/install/**"
+      - "protocol/**"
       - ".github/workflows/companion.yml"
   pull_request:
     branches: [main, dev]
     paths:
       - "companion/**"
-      - "web/install/**"
+      - "protocol/**"
   workflow_dispatch:
 
 jobs:
@@ -34,11 +34,20 @@ jobs:
           cache: pnpm
           cache-dependency-path: companion/pnpm-lock.yaml
 
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libssl-dev libdbus-1-dev
+
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Build
-        run: pnpm run build
+      - name: Build frontend + check Rust
+        run: |
+          pnpm run build
+          cargo check --manifest-path src-tauri/Cargo.toml
 
   package-macos:
     runs-on: macos-latest
@@ -58,22 +67,39 @@ jobs:
           cache: pnpm
           cache-dependency-path: companion/pnpm-lock.yaml
 
+      - uses: dtolnay/rust-toolchain@stable
+
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Package DMG + ZIP
+      - name: Package DMG
         run: pnpm run dist
-        env:
-          # Unsigned local/CI builds — users Open once via right-click on first launch.
-          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Rename artifacts
+        run: |
+          mkdir -p release
+          ARCH="$(uname -m)"
+          case "$ARCH" in
+            arm64) ARCH_LABEL=arm64 ;;
+            x86_64) ARCH_LABEL=x64 ;;
+            *) ARCH_LABEL="$ARCH" ;;
+          esac
+          VERSION=$(node -p "require('./package.json').version")
+          APP_DMG=$(find src-tauri/target/release/bundle/dmg -name '*.dmg' | head -1)
+          if [[ -z "$APP_DMG" ]]; then
+            echo "No DMG found" >&2
+            find src-tauri/target/release/bundle -type f || true
+            exit 1
+          fi
+          OUT="release/TouchDeck-Companion-${VERSION}-mac-${ARCH_LABEL}.dmg"
+          cp "$APP_DMG" "$OUT"
+          ls -lh release/
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
           name: touchdeck-companion-macos
-          path: |
-            companion/release/*.dmg
-            companion/release/*.zip
+          path: companion/release/*.dmg
           if-no-files-found: error
 
   release:
@@ -94,4 +120,3 @@ jobs:
         with:
           files: companion-dist/*
           fail_on_unmatched_files: true
-          # Firmware workflow may already have created this tag's release.

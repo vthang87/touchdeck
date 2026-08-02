@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TouchDeck — Giới thiệu &amp; hướng dẫn</title>
-  <meta name="description" content="TouchDeck: bàn phím cảm ứng ESP32 mở app macOS, volume/media BLE HID, Companion WebSocket." />
+  <meta name="description" content="TouchDeck: bàn phím cảm ứng ESP32 — GATT companion Tauri, mở app / volume / media trên macOS." />
   <style>
     :root {
       color-scheme: dark;
@@ -174,7 +174,7 @@
         </p>
         <div class="cta">
           <a class="btn" href="setup.html">Cài firmware (USB)</a>
-          <a class="btn ghost" href="https://github.com/vthang87/touchdeck/releases/latest/download/TouchDeck-Companion-0.2.0-mac-arm64.dmg">Tải Companion (Mac)</a>
+          <a class="btn ghost" href="https://github.com/vthang87/touchdeck/releases/latest/download/TouchDeck-Companion-0.3.0-mac-arm64.dmg">Tải Companion (Mac)</a>
           <a class="btn ghost" href="#huong-dan">Xem hướng dẫn</a>
         </div>
       </div>
@@ -190,29 +190,29 @@
       <div class="grid3">
         <div class="card">
           <strong>Board TouchDeck</strong>
-          <p>LCD 800×480 + GT911, UI LVGL, BLE HID media, Wi‑Fi portal, WebSocket, OTA.</p>
+          <p>LCD 800×480 + GT911, UI LVGL, BLE GATT, Wi‑Fi portal / OTA / icon.</p>
         </div>
         <div class="card">
-          <strong>Companion (macOS)</strong>
-          <p>Nhận nhấn tile → mở app; đồng bộ volume; đẩy thông báo approve Cursor/Codex.</p>
+          <strong>Companion (Tauri, macOS)</strong>
+          <p>Scan BLE → nhận <code>action_id</code> → mở app / volume / media; sync volume lên deck.</p>
         </div>
         <div class="card">
           <strong>Portal &amp; Grid editor</strong>
-          <p>Wi‑Fi, Bluetooth, idle/đồng hồ; sửa lưới nút tại <code>touchdeck.local/grid</code>.</p>
+          <p>Wi‑Fi, pairing BLE, idle; lưới nút + <code>action_id</code> tại <code>touchdeck.local/grid</code>.</p>
         </div>
       </div>
 
-      <h3>Hai đường kết nối</h3>
+      <h3>Kênh kết nối</h3>
       <table>
         <thead><tr><th>Kênh</th><th>Dùng cho</th></tr></thead>
         <tbody>
           <tr>
-            <td><strong>Bluetooth (BLE HID)</strong></td>
-            <td>Volume (có HUD macOS), mute / play / next / prev</td>
+            <td><strong>Bluetooth GATT</strong></td>
+            <td>Tile press, volume UI, lệnh companion (protocol v4)</td>
           </tr>
           <tr>
-            <td><strong>Wi‑Fi (WebSocket :81)</strong></td>
-            <td>Mở app qua Companion, sync volume %, approval alerts</td>
+            <td><strong>Wi‑Fi</strong></td>
+            <td>Portal, OTA, upload icon — không còn WebSocket launch</td>
           </tr>
         </tbody>
       </table>
@@ -224,9 +224,9 @@
       <table>
         <thead><tr><th>Icon</th><th>Ý nghĩa</th></tr></thead>
         <tbody>
-          <tr><td>Volume %</td><td>Mức loa Mac (Companion đẩy qua WS)</td></tr>
-          <tr><td>Bluetooth</td><td>Xanh = đã ghép HID</td></tr>
-          <tr><td>⇅</td><td>Xanh = Companion đã nối — nút mở app mới bật</td></tr>
+          <tr><td>Volume %</td><td>Mức loa Mac (Companion đẩy qua GATT)</td></tr>
+          <tr><td>Bluetooth</td><td>Xanh = GATT companion đã nối</td></tr>
+          <tr><td>⇅</td><td>Xanh = companion linked — tile host mới bật</td></tr>
           <tr><td>Wi‑Fi</td><td>Xanh = STA; vàng = đang AP setup</td></tr>
         </tbody>
       </table>
@@ -268,7 +268,7 @@
       <h3>4. Companion trên Mac</h3>
       <p>Tải bản đóng gói rồi mở — không cần Node/pnpm:</p>
       <div class="cta" style="margin: 12px 0 16px;">
-        <a class="btn" href="https://github.com/vthang87/touchdeck/releases/latest/download/TouchDeck-Companion-0.2.0-mac-arm64.dmg">Tải Companion (DMG · Apple Silicon)</a>
+        <a class="btn" href="https://github.com/vthang87/touchdeck/releases/latest/download/TouchDeck-Companion-0.3.0-mac-arm64.dmg">Tải Companion (DMG · Apple Silicon)</a>
         <a class="btn ghost" href="https://github.com/vthang87/touchdeck/releases/latest">Mọi bản phát hành</a>
       </div>
       <ol>
