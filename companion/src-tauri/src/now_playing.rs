@@ -35,11 +35,23 @@ impl Default for NowPlaying {
 impl NowPlaying {
   /// Keep GATT payloads small (UTF-8 + JSON overhead).
   pub fn truncated(mut self) -> Self {
-    self.title = truncate_chars(&self.title, 72);
-    self.artist = truncate_chars(&self.artist, 48);
-    self.app = truncate_chars(&self.app, 24);
+    self.title = truncate_chars(&sanitize_display_text(&self.title), 72);
+    self.artist = truncate_chars(&sanitize_display_text(&self.artist), 48);
+    self.app = truncate_chars(&sanitize_display_text(&self.app), 24);
     self
   }
+}
+
+/// Map punctuation the deck font historically lacked (en/em dash, etc.).
+fn sanitize_display_text(s: &str) -> String {
+  s.chars()
+    .map(|c| match c {
+      '\u{2010}' | '\u{2011}' | '\u{2012}' | '\u{2013}' | '\u{2014}' | '\u{2015}' => '-',
+      '\u{2018}' | '\u{2019}' => '\'',
+      '\u{201C}' | '\u{201D}' => '"',
+      other => other,
+    })
+    .collect()
 }
 
 fn truncate_chars(s: &str, max: usize) -> String {

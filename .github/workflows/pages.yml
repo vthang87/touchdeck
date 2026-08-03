@@ -33,7 +33,7 @@ jobs:
       - name: Sync doc screenshots into installer assets
         run: |
           mkdir -p web/install/assets
-          for f in home-grid.png grid-editor.png device-settings.png companion-ui.png; do
+          for f in media-page.png home-grid.png grid-editor.png device-settings.png companion-ui.png; do
             if [[ -f "docs/images/$f" ]]; then
               cp "docs/images/$f" "web/install/assets/$f"
             fi

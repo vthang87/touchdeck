@@ -11,7 +11,11 @@
 #include "ui/ui_manager.h"
 #include "display/display_driver.h"
 #include "system/idle_manager.h"
+#include "grid_config.h"
+
+#if TOUCHDECK_ENABLE_SCREENSHOT
 #include "ui/screenshot.h"
+#endif
 
 static WebServer* s_server = nullptr;
 static DeviceSettings s_current;
@@ -687,7 +691,34 @@ static void handleApiBrightness() {
   sendJson(200, json);
 }
 
+#if TOUCHDECK_ENABLE_SCREENSHOT
+static void handleApiUiPage() {
+  if (!s_server->hasArg("i")) {
+    sendJson(400, "{\"error\":\"missing i\"}");
+    return;
+  }
+  const int index = s_server->arg("i").toInt();
+  if (index < 0 || index >= DECK_PAGE_MAX) {
+    sendJson(400, "{\"error\":\"bad page\"}");
+    return;
+  }
+  uiManagerSetPage(static_cast<uint8_t>(index));
+  JsonDocument doc;
+  doc["page"] = index;
+  String json;
+  serializeJson(doc, json);
+  sendJson(200, json);
+}
+
 static void handleApiScreenshot() {
+  // Optional ?page=N — switch workspace page then capture (docs / capture script).
+  if (s_server->hasArg("page")) {
+    const int index = s_server->arg("page").toInt();
+    if (index >= 0 && index < DECK_PAGE_MAX) {
+      uiManagerSetPage(static_cast<uint8_t>(index));
+      delay(120);
+    }
+  }
   uint8_t* bmp = nullptr;
   size_t len = 0;
   if (!uiScreenshotCaptureBmp(&bmp, &len) || !bmp || len == 0) {
@@ -716,10 +747,14 @@ static void handleApiScreenshot() {
   Serial.printf("[SHOT] HTTP sent %u / %u\n", static_cast<unsigned>(sent),
                 static_cast<unsigned>(len));
 }
+#endif
 
 static void registerRoutes() {
   s_server->on("/api/brightness", HTTP_GET, handleApiBrightness);
+#if TOUCHDECK_ENABLE_SCREENSHOT
+  s_server->on("/api/ui/page", HTTP_GET, handleApiUiPage);
   s_server->on("/api/screenshot", HTTP_GET, handleApiScreenshot);
+#endif
   s_server->on("/", HTTP_GET, handleRoot);
   s_server->on("/grid", HTTP_GET, handleGridPage);
   s_server->on("/save", HTTP_POST, handleSave);

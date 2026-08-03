@@ -48,25 +48,29 @@ impl ActionEngine {
         } else {
           "volume_up"
         };
-        if virtual_keyboard::media(op).is_ok() {
-          let vol = platform::read_volume().unwrap_or(VolumeState {
-            level: 50,
-            muted: false,
-          });
+        let delta: i32 = if op == "volume_down" { -3 } else { 3 };
+        // Prefer osascript ±3 so readback matches the board step. HID VolumeUp/Down
+        // often returns the *previous* level if we read immediately after the key.
+        if let Ok(vol) = platform::adjust_volume(delta) {
           return Ok(Some(vol));
         }
-        let delta: i32 = if op == "volume_down" { -3 } else { 3 };
-        Ok(Some(platform::adjust_volume(delta)?))
+        virtual_keyboard::media(op)?;
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        Ok(Some(platform::read_volume().unwrap_or(VolumeState {
+          level: 50,
+          muted: false,
+        })))
       }
       ActionKind::Mute => {
-        if virtual_keyboard::media("mute").is_ok() {
-          let vol = platform::read_volume().unwrap_or(VolumeState {
-            level: 50,
-            muted: true,
-          });
+        if let Ok(vol) = platform::toggle_mute() {
           return Ok(Some(vol));
         }
-        Ok(Some(platform::toggle_mute()?))
+        virtual_keyboard::media("mute")?;
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        Ok(Some(platform::read_volume().unwrap_or(VolumeState {
+          level: 50,
+          muted: true,
+        })))
       }
       ActionKind::Keyboard => {
         if let Err(e) = virtual_keyboard::keyboard(&action.value) {

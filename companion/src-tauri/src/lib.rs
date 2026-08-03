@@ -160,6 +160,9 @@ async fn ble_connect(state: State<'_, AppState>, app: AppHandle, id: String) -> 
       "reconnecting": false,
     }),
   );
+  // Deck boots with a default volume — push Mac level immediately.
+  tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+  push_host_volume_now(&app, &state.ble).await;
   Ok(())
 }
 
@@ -314,19 +317,100 @@ async fn push_volume(state: State<'_, AppState>, level: u8, muted: bool) -> Resu
     .map_err(|e| e.to_string())
 }
 
+async fn sync_volume_to_deck(
+  app: &AppHandle,
+  ble: &tokio::sync::Mutex<crate::ble::BleHub>,
+  vol: crate::action::VolumeState,
+) {
+  emit_log(
+    app,
+    "info",
+    format!(
+      "volume now {}%{}",
+      vol.level,
+      if vol.muted { " (muted)" } else { "" }
+    ),
+  );
+  let hub = ble.lock().await;
+  if !hub.is_connected() {
+    emit_log(app, "warn", "volume changed on Mac but deck not connected — skip push");
+    return;
+  }
+  if let Err(e) = hub
+    .write_command(&serde_json::json!({
+      "op": "volume",
+      "level": vol.level,
+      "muted": vol.muted
+    }))
+    .await
+  {
+    emit_log(app, "warn", format!("push volume to board failed: {e}"));
+  }
+}
+
+async fn push_host_volume_now(app: &AppHandle, ble: &tokio::sync::Mutex<crate::ble::BleHub>) {
+  let vol = match tokio::task::spawn_blocking(crate::platform::read_volume).await {
+    Ok(Ok(v)) => v,
+    Ok(Err(e)) => {
+      emit_log(app, "warn", format!("read Mac volume failed: {e}"));
+      return;
+    }
+    Err(e) => {
+      emit_log(app, "warn", format!("read Mac volume join failed: {e}"));
+      return;
+    }
+  };
+  sync_volume_to_deck(app, ble, vol).await;
+}
+
+async fn sync_volume_to_deck_state(app: &AppHandle, state: &AppState, vol: crate::action::VolumeState) {
+  sync_volume_to_deck(app, &state.ble, vol).await;
+}
+
 /// Inject a virtual-keyboard event on the host (for Connect UI testing + future deck maps).
 #[tauri::command]
-fn vk_inject(app: AppHandle, kind: String, value: String) -> Result<(), String> {
+async fn vk_inject(
+  app: AppHandle,
+  state: State<'_, AppState>,
+  kind: String,
+  value: String,
+) -> Result<(), String> {
   emit_log(&app, "info", format!("virtual keyboard → {kind}:{value}"));
   match kind.as_str() {
-    "media" => crate::virtual_keyboard::media(&value).or_else(|e| {
-      warn!("enigo media: {e}");
-      crate::platform::media_key(&value)
-    }),
-    "keyboard" => crate::virtual_keyboard::keyboard(&value).or_else(|e| {
-      warn!("enigo keyboard: {e}");
-      crate::platform::keyboard(&value)
-    }),
+    "media" => {
+      let v = value.clone();
+      tokio::task::spawn_blocking(move || {
+        crate::virtual_keyboard::media(&v).or_else(|e| {
+          warn!("enigo media: {e}");
+          crate::platform::media_key(&v)
+        })
+      })
+      .await
+      .map_err(|e| format!("vk join: {e}"))?
+    }
+    "keyboard" => {
+      let v = value.clone();
+      let is_vol = v.contains("volume");
+      tokio::task::spawn_blocking(move || {
+        crate::virtual_keyboard::keyboard(&v).or_else(|e| {
+          warn!("enigo keyboard: {e}");
+          crate::platform::keyboard(&v)
+        })
+      })
+      .await
+      .map_err(|e| format!("vk join: {e}"))??;
+      if is_vol {
+        let vol = tokio::task::spawn_blocking(crate::platform::read_volume)
+          .await
+          .map_err(|e| format!("vk join: {e}"))?
+          .unwrap_or(crate::action::VolumeState {
+            level: 50,
+            muted: false,
+          });
+        sync_volume_to_deck_state(&app, &state, vol).await;
+      }
+      Ok(())
+    }
     "volume" => {
       let op = if value == "down" || value == "volume_down" {
         "volume_down"
@@ -335,14 +419,19 @@ fn vk_inject(app: AppHandle, kind: String, value: String) -> Result<(), String> 
       } else {
         "volume_up"
       };
-      crate::virtual_keyboard::media(op).or_else(|_| {
+      let vol = tokio::task::spawn_blocking(move || {
         if op == "mute" {
-          crate::platform::toggle_mute().map(|_| ())
+          crate::platform::toggle_mute()
         } else {
           let delta = if op == "volume_down" { -3 } else { 3 };
-          crate::platform::adjust_volume(delta).map(|_| ())
+          crate::platform::adjust_volume(delta)
         }
       })
+      .await
+      .map_err(|e| format!("vk join: {e}"))?
+      .map_err(|e| e)?;
+      sync_volume_to_deck_state(&app, &state, vol).await;
+      Ok(())
     }
     _ => Err(format!("unknown vk kind: {kind}")),
   }
@@ -410,26 +499,7 @@ async fn handle_tile_press(app: AppHandle, state: AppState, action_id: String) {
 
   match result {
     Ok(Some(vol)) => {
-      emit_log(
-        &app,
-        "info",
-        format!(
-          "volume now {}%{}",
-          vol.level,
-          if vol.muted { " (muted)" } else { "" }
-        ),
-      );
-      let ble = state.ble.lock().await;
-      if let Err(e) = ble
-        .write_command(&serde_json::json!({
-          "op": "volume",
-          "level": vol.level,
-          "muted": vol.muted
-        }))
-        .await
-      {
-        emit_log(&app, "warn", format!("push volume to board failed: {e}"));
-      }
+      sync_volume_to_deck_state(&app, &state, vol).await;
     }
     Ok(None) => {
       emit_log(&app, "info", format!("executed {}", record.action_id));
@@ -601,6 +671,7 @@ pub fn run() {
               Err(crate::ble::BleError::Msg("reconnect tick timed out".into()))
             }
           };
+          let mut sync_vol_after = false;
           match tick {
             Ok(ReconnectTick::Healthy) => {}
             Ok(ReconnectTick::Idle) => {}
@@ -652,6 +723,7 @@ pub fn run() {
                   "reconnecting": false,
                 }),
               );
+              sync_vol_after = true;
             }
             Ok(ReconnectTick::AttemptFailed) => {
               if was_connected {
@@ -673,6 +745,11 @@ pub fn run() {
               );
             }
             Err(e) => error!("reconnect: {e}"),
+          }
+          drop(hub);
+          if sync_vol_after {
+            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+            push_host_volume_now(&app_h, &ble_h).await;
           }
         }
       });
@@ -749,6 +826,40 @@ pub fn run() {
             tracing::info!("{msg}");
           } else if np.title.is_empty() && last_logged_title.is_empty() && due {
             tracing::debug!("now_playing idle (nothing in Control Center)");
+          }
+        }
+      });
+
+      // Keep deck volume in sync with macOS (connect / Control Center / keyboard).
+      let ble_vol = ble.clone();
+      let app_vol = app.handle().clone();
+      tauri::async_runtime::spawn(async move {
+        let mut last: Option<crate::action::VolumeState> = None;
+        let mut was_connected = false;
+        loop {
+          tokio::time::sleep(std::time::Duration::from_millis(2000)).await;
+          let connected = {
+            let hub = ble_vol.lock().await;
+            hub.is_connected()
+          };
+          if !connected {
+            was_connected = false;
+            last = None;
+            continue;
+          }
+          let just_connected = !was_connected;
+          was_connected = true;
+          let vol = match tokio::task::spawn_blocking(crate::platform::read_volume).await {
+            Ok(Ok(v)) => v,
+            _ => continue,
+          };
+          let changed = last
+            .as_ref()
+            .map(|l| l.level != vol.level || l.muted != vol.muted)
+            .unwrap_or(true);
+          if just_connected || changed {
+            last = Some(vol.clone());
+            sync_volume_to_deck(&app_vol, &ble_vol, vol).await;
           }
         }
       });
