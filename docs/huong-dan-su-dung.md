@@ -1,6 +1,8 @@
-# TouchDeck — Giới thiệu hệ thống & Hướng dẫn sử dụng
+# TouchDeck — Giới thiệu hệ thống & hướng dẫn sử dụng
 
-TouchDeck là bàn phím cảm ứng 7" (board **JC8048W550C**, ESP32-S3) dùng để mở app trên macOS và chỉnh volume/media qua Companion Tauri (BLE GATT) — cấu hình qua Companion hoặc web portal.
+> **Ngôn ngữ:** [English](user-guide.md) (ưu tiên) · [Tiếng Việt](huong-dan-su-dung.md)
+
+TouchDeck là bàn phím cảm ứng 7″ (board **JC8048W550C**, ESP32-S3) dùng để mở app trên macOS và chỉnh volume/media qua **TouchDeck Companion** (Tauri) trên **BLE GATT** — cấu hình qua Companion hoặc web portal.
 
 | | |
 |---|---|
@@ -25,44 +27,51 @@ flowchart LR
 | Thành phần | Vai trò |
 |---|---|
 | **Firmware trên board** | UI LVGL (Media + shortcuts), BLE GATT peripheral, Wi‑Fi portal / OTA / icon |
-| **TouchDeck Companion** (Tauri, macOS) | Scan/connect/auto-reconnect BLE, Now Playing → board, map `action_id` → app / volume / media |
+| **TouchDeck Companion** (Tauri, macOS) | Scan/connect/auto-reconnect BLE, Now Playing + volume → board, map `action_id` → app / volume / media |
 | **Config portal** | Wi‑Fi, Bluetooth pairing, idle, tên thiết bị |
 | **Grid editor** | Số trang (2–4) + lưới shortcut (`action_id`); trang Media không chỉnh bằng tile editor |
 | **Web installer** | Flash firmware qua USB (Chrome/Edge) |
 
 Kênh chính: **Bluetooth GATT**. Wi‑Fi chỉ còn portal / OTA / icon — không còn WebSocket launch.
+
 ---
 
 ## 2. Màn hình trên desk
 
-Thiết bị dùng **2–4 trang** (mặc định **2**):
+Thiết bị dùng **2–4 trang** (mặc định **2**). Thanh trên (shared header): tên thiết bị · đồng hồ · volume % · Bluetooth · link · Wi‑Fi.
 
 | Trang | Nội dung |
 |---|---|
-| **0 — Media** | Now Playing (title/artist tiếng Việt, progress, seek ±10s, tốc độ −/1x/+, transport, volume). Companion đẩy qua GATT. |
-| **1…N-1** | Lưới shortcut (mở app / URL / macro). Vuốt ngang hoặc chạm **dots** để đổi trang. |
+| **0 — Media** | Now Playing (title/artist tiếng Việt, progress + time nội suy khi đang phát, seek ±10s, transport). Hàng dưới: tốc độ `− / 1x / +` cùng hàng với Vol− / Mute / Vol+. Companion đẩy Now Playing + volume qua GATT. |
+| **1…N−1** | Lưới shortcut (mở app / URL / macro). Vuốt ngang hoặc chạm **dots** để đổi trang. |
 
-Vuốt ngang từ nút/tile **không** kích hoạt nút (firmware theo dõi khoảng cách kéo). Trang Media xám / gợi ý kết nối Companion khi chưa nối GATT. Trang đang xem được nhớ qua NVS.
+Vuốt ngang đổi trang ngay khi kéo đủ ngưỡng và **không** kích hoạt nút (Touch Router). Trang Media xám / gợi ý kết nối Companion khi chưa nối GATT. Trang đang xem được nhớ qua NVS.
 
-![Màn hình home grid TouchDeck](images/home-grid.png)
+![Trang Media — Now Playing](images/media-page.png)
 
-> Ảnh chụp trực tiếp từ LVGL trên board (`GET /api/screenshot`).
+![Trang shortcut — home grid](images/home-grid.png)
 
-**Chụp lại màn hình:**
+> Ảnh chụp từ LVGL trên board (`GET /api/screenshot`) chỉ khi firmware build với `-DTOUCHDECK_ENABLE_SCREENSHOT=1` (**không** bật trên prod).
+
+**Chụp lại màn hình (dev):**
 
 ```bash
-./scripts/capture-screenshot.sh              # → docs/images/home-grid.png
-./scripts/capture-screenshot.sh 192.168.0.183
+# Build có screenshot API, rồi:
+./scripts/capture-screenshot.sh 192.168.0.183 media-page 0
+./scripts/capture-screenshot.sh 192.168.0.183 home-grid 1
 ```
 
-**Ý nghĩa thanh trạng thái (góc phải, trang shortcut):**
+**Ý nghĩa thanh trạng thái (góc phải):**
 
 | Icon | Ý nghĩa |
 |---|---|
-| Volume % | Mức loa Mac (Companion đẩy qua GATT) |
-| Bluetooth | Xanh = GATT central đã nối; `pair` / `idle` / `off` |
+| Đồng hồ | Giờ local (NTP khi có Wi‑Fi) |
+| Volume % / Muted | Mức loa Mac (Companion đẩy GATT khi connect/reconnect và sau Vol±/Mute; board cũng cập nhật optimistic) |
+| Bluetooth | Chỉ icon — xanh = GATT đã nối; vàng = pairing; xám = idle / off |
 | ⇅ | Xanh = companion GATT linked; xám = chưa nối → tile host bị mờ |
 | Wi‑Fi | Xanh = STA; vàng = đang AP setup |
+
+Nút Mute trên Media và tile **Mute** trên shortcut dùng style đỏ khi muted.
 
 ---
 
@@ -77,8 +86,6 @@ Cách nhanh nhất — Chrome/Edge + USB‑C **có data**:
 3. (Khuyên dùng lần đầu) bật xóa flash → **Ghi firmware**
 
 ![Web installer](images/web-installer.png)
-
-Giới thiệu & HDSD trên Pages: https://vthang87.github.io/touchdeck/
 
 Hoặc local:
 
@@ -103,17 +110,17 @@ Chi tiết: [`web-install.md`](web-install.md).
 2. Trên Mac: cấp quyền **Bluetooth** cho TouchDeck Companion (System Settings → Privacy & Security → Bluetooth)
 3. Companion → **Scan BLE** → **Connect** tới `TouchDeck-XXXX`
 
-Không ghép như bàn phím HID — Companion là GATT central. Volume/media do app xử lý (không có HUD hệ thống).
+Không ghép như bàn phím HID — Companion là GATT central. Volume/media do app xử lý (không có HUD hệ thống từ BLE HID).
 
 ### 3.4 Companion trên Mac (Tauri)
 
 **Tải nhanh (Apple Silicon):**  
-[TouchDeck-Companion-0.3.0-mac-arm64.dmg](https://github.com/vthang87/touchdeck/releases/latest/download/TouchDeck-Companion-0.3.0-mac-arm64.dmg) · [Tất cả releases](https://github.com/vthang87/touchdeck/releases/latest)
+[TouchDeck-Companion-0.3.1-mac-arm64.dmg](https://github.com/vthang87/touchdeck/releases/latest/download/TouchDeck-Companion-0.3.1-mac-arm64.dmg) · [Tất cả releases](https://github.com/vthang87/touchdeck/releases/latest)
 
 1. Mở `.dmg` → kéo **TouchDeck Companion.app** vào Applications  
 2. Chạy app. Lần đầu nếu macOS chặn: chuột phải → **Open** / Privacy & Security → Open Anyway  
 3. Tab **Connect** → **Scan BLE** → Connect  
-4. Cấp **Accessibility** (media / keyboard / volume simulation)
+4. Cấp **Accessibility** (media / keyboard / volume)
 
 Tabs hữu ích:
 
@@ -123,6 +130,8 @@ Tabs hữu ích:
 | **Grid** / **Device** | Cấu hình board qua Wi‑Fi (`touchdeck.local`) |
 | **Profile** | Map `action_id` → open_app / media / volume / keyboard |
 | **Log** | Sự kiện GATT / lỗi |
+
+Sau connect hoặc reconnect, Companion đẩy volume Mac xuống deck (Log có `volume now X%`). Now Playing được đẩy khi đang linked.
 
 Tự build:
 
@@ -150,9 +159,10 @@ Nếu tile **mờ**: Companion chưa nối BLE — Scan + Connect lại.
 
 Tất cả media/volume do Companion xử lý (không còn BLE HID trên board).
 
-- **Now Playing:** lấy từ session hệ thống (Safari/YouTube, Music, Spotify, …) qua MediaRemote/JXA — không chỉ Music/Spotify.
+- **Now Playing:** session hệ thống (Safari/YouTube, Music, Spotify, …) qua MediaRemote/JXA — không chỉ Music/Spotify.
+- Thời gian progress trên board nội suy local khi đang phát; chỉ hard-sync từ host khi seek / đổi bài / pause-resume (tránh `pos_ms` cũ nhảy về 0).
 - **Seek ±10s:** đặt vị trí phát; không nhảy next/prev khi seek lỗi.
-- **Tốc độ:** − / 1x / + (0.75×…2×) khi app hỗ trợ; Safari có thể cần bật *Allow JavaScript from Apple Events*.
+- **Tốc độ:** − / 1x / + (khoảng 0.75×…2×) khi app hỗ trợ; Safari có thể cần *Allow JavaScript from Apple Events*.
 - Volume ± khoảng 3%, **không có HUD hệ thống**. Mute / play / next / prev / seek cần **Accessibility**.
 
 ### 4.3 Đổi trang deck
@@ -215,12 +225,13 @@ Mật khẩu OTA mặc định: `touchdeck`. Chi tiết: [`ota-process.md`](ota-
 | Hiện tượng | Việc kiểm tra |
 |---|---|
 | Nút mờ / không mở app | Companion đã Connect BLE? Icon BT xanh? |
-| BLE rớt / treo “Linked” | Restart Companion — bản mới auto-reconnect (re-scan, không block disconnect). Xem Log: `link cleared` → `Attempting reconnect` |
-| Now Playing trống | Có media trên Control Center? Companion Log có dòng `Now Playing:`? |
+| BLE rớt / treo “Linked” | Restart Companion — auto-reconnect (re-scan, không block disconnect). Log: `link cleared` → reconnect |
+| Volume % sai sau connect | Log phải có `volume now X%` ngay sau connect/reconnect; restart Companion nếu không thấy |
+| Now Playing trống | Có media trên Control Center? Log có dòng `Now Playing:`? |
 | Mute / media không chạy | Accessibility cho Companion? |
-| Rate không đổi (Safari) | Safari → Develop / settings: Allow JavaScript from Apple Events |
+| Rate không đổi (Safari) | Allow JavaScript from Apple Events |
 | Volume không có HUD | Đúng hành vi v4 (không BLE HID) |
-| Vuốt bị bấm nút | Flash firmware mới (drag gate) |
+| Vuốt bị bấm nút | Flash firmware mới (Touch Router) |
 | Dim thành tắt hẳn | PWM backlight 1 kHz; **Dim brightness %** ≥ ~20 |
 | Wake bị bấm nhầm tile | Đã chặn; nhấc tay rồi chạm lại |
 | Portal không mở | Thử IP hoặc AP setup |
@@ -238,7 +249,6 @@ Mật khẩu OTA mặc định: `touchdeck`. Chi tiết: [`ota-process.md`](ota-
 - [`ble-protocol.md`](ble-protocol.md) — legacy v3 notes
 - [`approval-notifications.md`](approval-notifications.md) — approve (legacy / phase sau)
 - [`ota-process.md`](ota-process.md) — OTA
-- [`cloudflare-worker.md`](cloudflare-worker.md) — deploy installer (tuỳ chọn)
 
 ---
 
@@ -246,12 +256,13 @@ Mật khẩu OTA mặc định: `touchdeck`. Chi tiết: [`ota-process.md`](ota-
 
 | File | Nội dung |
 |---|---|
-| `images/home-grid.png` | Màn hình desk — LVGL snapshot qua `/api/screenshot` |
+| `images/media-page.png` | Trang Media — LVGL snapshot |
+| `images/home-grid.png` | Trang shortcut — LVGL snapshot |
 | `images/grid-editor.png` | Grid editor trên board |
 | `images/device-settings.png` | Portal Wi‑Fi / idle / Bluetooth |
 | `images/companion-ui.png` | TouchDeck Companion |
 | `images/web-installer.png` | GitHub Pages installer |
-| `images/home-grid-mock.html` | Mock HTML (tham khảo, không còn dùng làm ảnh chính) |
+| `images/home-grid-mock.html` | Mock HTML (tham khảo) |
 
 ---
 

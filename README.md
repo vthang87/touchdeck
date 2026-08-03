@@ -40,10 +40,11 @@ pio device monitor -b 115200
 cd web && pnpm serve                # http://127.0.0.1:8787
 ```
 
-**GitHub:** tag `v*` → Release; intro + HDSD on **GitHub Pages**, flash at `/setup.html`.
+**GitHub:** tag `v*` → Release; intro + guide on **GitHub Pages**, flash at `/setup.html`.
 
-- Giới thiệu / HDSD: https://vthang87.github.io/touchdeck/
-- Cài firmware: https://vthang87.github.io/touchdeck/setup.html
+- Intro / guide: https://vthang87.github.io/touchdeck/
+- Full docs: [English](docs/user-guide.md) · [Tiếng Việt](docs/huong-dan-su-dung.md)
+- Firmware install: https://vthang87.github.io/touchdeck/setup.html
 - Protocol: [`protocol/gatt.md`](protocol/gatt.md)
 - Web install: [`docs/web-install.md`](docs/web-install.md)
 
@@ -60,7 +61,7 @@ Primary link is **Bluetooth GATT** (not WebSocket).
 ### Cài nhanh
 
 - **Releases:** https://github.com/vthang87/touchdeck/releases/latest  
-  Artifact: `TouchDeck-Companion-0.3.0-mac-arm64.dmg` (version follows `companion/package.json`)
+  Artifact: `TouchDeck-Companion-0.3.1-mac-arm64.dmg` (version follows `companion/package.json`)
 
 Mở `.dmg` → kéo app vào Applications. Lần đầu: **Privacy & Security → Open Anyway**.
 
@@ -96,7 +97,8 @@ Default OTA password: `touchdeck`.
 
 ## Docs
 
-- [`docs/huong-dan-su-dung.md`](docs/huong-dan-su-dung.md) — giới thiệu + HDSD
+- [`docs/user-guide.md`](docs/user-guide.md) — system overview & user guide (**English**, primary)
+- [`docs/huong-dan-su-dung.md`](docs/huong-dan-su-dung.md) — giới thiệu + HDSD (Tiếng Việt)
 - [`docs/companion.md`](docs/companion.md) — companion Tauri overview
 - [`protocol/gatt.md`](protocol/gatt.md) — GATT protocol v4
 - [`docs/ble-protocol.md`](docs/ble-protocol.md) — legacy v3 notes (superseded)

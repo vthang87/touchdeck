@@ -4,33 +4,23 @@
 #include <string.h>
 
 #include "board_config.h"
+#include "deck_header.h"
 #include "display/display_driver.h"
 #include "home_grid_screen.h"
 #include "media_screen.h"
 #include "storage/profile_store.h"
+#include "ui/touch_router.h"
 
 namespace {
 
 lv_obj_t* s_root = nullptr;
-lv_obj_t* s_media_host = nullptr;
-lv_obj_t* s_grid_host = nullptr;
+lv_obj_t* s_page_hosts[DECK_PAGE_MAX] = {};
 lv_obj_t* s_dots[DECK_PAGE_MAX] = {};
 lv_obj_t* s_dot_row = nullptr;
 uint8_t s_page_count = DECK_PAGE_MIN;
 uint8_t s_page = 0;
-uint8_t s_shortcut_idx = 0;
-int8_t s_loaded_shortcut = -1;
-bool s_on_media = true;
 bool s_page_dirty = false;
 uint32_t s_save_at_ms = 0;
-uint32_t s_swipe_suppress_until_ms = 0;
-lv_point_t s_press_pt = {0, 0};
-bool s_press_tracking = false;
-bool s_drag_is_swipe = false;
-bool s_swipe_page_applied = false;
-
-constexpr lv_coord_t kSwipeMinDx = 48;
-constexpr lv_coord_t kClickMaxSlop = 18;
 
 Preferences s_prefs;
 
@@ -67,97 +57,80 @@ void refreshDots() {
   }
 }
 
-bool showShortcutLocked(uint8_t shortcut_index) {
-  const DeckProfile& profile = profileStore.profile();
-  if (shortcut_index >= profile.shortcut_count) {
-    return false;
-  }
-  s_shortcut_idx = shortcut_index;
-  if (s_loaded_shortcut == static_cast<int8_t>(shortcut_index)) {
-    return true;
-  }
-  if (!homeGridScreenReloadLocked(profile.pages[shortcut_index])) {
-    return false;
-  }
-  s_loaded_shortcut = static_cast<int8_t>(shortcut_index);
-  return true;
-}
-
-void showHostsForPage(uint8_t page) {
-  // Instant show/hide — no dual-page scroll redraw (was the swipe jank source).
-  if (page == 0) {
-    if (s_media_host) lv_obj_clear_flag(s_media_host, LV_OBJ_FLAG_HIDDEN);
-    if (s_grid_host) lv_obj_add_flag(s_grid_host, LV_OBJ_FLAG_HIDDEN);
-  } else {
-    if (s_grid_host) lv_obj_clear_flag(s_grid_host, LV_OBJ_FLAG_HIDDEN);
-    if (s_media_host) lv_obj_add_flag(s_media_host, LV_OBJ_FLAG_HIDDEN);
+void raiseChrome() {
+  deckHeaderRaise();
+  if (s_dot_row) {
+    lv_obj_move_foreground(s_dot_row);
   }
 }
 
-void applyPage(uint8_t page, bool /*animate*/) {
+void showOnlyPage(uint8_t page) {
+  for (uint8_t i = 0; i < DECK_PAGE_MAX; ++i) {
+    if (!s_page_hosts[i]) continue;
+    if (i == page && i < s_page_count) {
+      lv_obj_clear_flag(s_page_hosts[i], LV_OBJ_FLAG_HIDDEN);
+    } else {
+      lv_obj_add_flag(s_page_hosts[i], LV_OBJ_FLAG_HIDDEN);
+    }
+  }
+  raiseChrome();
+}
+
+void applyPage(uint8_t page) {
   if (page >= s_page_count) {
     page = static_cast<uint8_t>(s_page_count - 1);
   }
   s_page = page;
-  if (page == 0) {
-    s_on_media = true;
-    showHostsForPage(0);
-  } else {
-    s_on_media = false;
-    showShortcutLocked(static_cast<uint8_t>(page - 1));
-    showHostsForPage(1);
-  }
+  showOnlyPage(page);
   refreshDots();
   scheduleSavePage();
 }
 
-void onDot(lv_event_t* e) {
-  if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
-  const uintptr_t idx = reinterpret_cast<uintptr_t>(lv_event_get_user_data(e));
-  applyPage(static_cast<uint8_t>(idx), false);
-}
-
-void markSwipe(lv_indev_t* indev) {
-  s_drag_is_swipe = true;
-  s_swipe_suppress_until_ms = millis() + 600;
-  if (indev) {
-    lv_indev_wait_release(indev);
+void onPageStep(int8_t step) {
+  if (step > 0) {
+    if (s_page + 1 < s_page_count) {
+      applyPage(static_cast<uint8_t>(s_page + 1));
+    }
+  } else if (step < 0) {
+    if (s_page > 0) {
+      applyPage(static_cast<uint8_t>(s_page - 1));
+    }
   }
 }
 
-void tryApplySwipeFromDx(lv_coord_t dx, lv_indev_t* indev) {
-  if (s_swipe_page_applied) {
+void onDot(lv_event_t* e) {
+  if (touchRouterHandleEvent(e)) {
     return;
   }
-  if (dx <= -kSwipeMinDx) {
-    if (s_page + 1 < s_page_count) {
-      applyPage(static_cast<uint8_t>(s_page + 1), false);
-      s_swipe_page_applied = true;
-    }
-  } else if (dx >= kSwipeMinDx) {
-    if (s_page > 0) {
-      applyPage(static_cast<uint8_t>(s_page - 1), false);
-      s_swipe_page_applied = true;
-    }
+  if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
+    return;
   }
-  if (s_swipe_page_applied) {
-    markSwipe(indev);
-  }
+  const uintptr_t idx = reinterpret_cast<uintptr_t>(lv_event_get_user_data(e));
+  applyPage(static_cast<uint8_t>(idx));
 }
 
-void onGesture(lv_event_t* e) {
-  if (lv_event_get_code(e) != LV_EVENT_GESTURE) return;
-  lv_indev_t* indev = lv_indev_get_act();
-  if (!indev) return;
-  const lv_dir_t dir = lv_indev_get_gesture_dir(indev);
-  if (dir == LV_DIR_LEFT) {
-    tryApplySwipeFromDx(-kSwipeMinDx, indev);
-  } else if (dir == LV_DIR_RIGHT) {
-    tryApplySwipeFromDx(kSwipeMinDx, indev);
-  } else {
-    // Any recognized gesture on a control should still kill the click.
-    markSwipe(indev);
-  }
+void onHostTouch(lv_event_t* e) {
+  // Empty areas / gesture bubble path — feed router so swipes not on a button still work.
+  (void)touchRouterHandleEvent(e);
+}
+
+lv_obj_t* makePageHost(lv_obj_t* parent) {
+  lv_obj_t* host = lv_obj_create(parent);
+  lv_obj_set_size(host, BOARD_LCD_H_RES, BOARD_LCD_V_RES);
+  lv_obj_set_pos(host, 0, 0);
+  lv_obj_set_style_bg_color(host, lv_color_hex(0x0B1220), 0);
+  lv_obj_set_style_bg_opa(host, LV_OPA_COVER, 0);
+  lv_obj_set_style_border_width(host, 0, 0);
+  lv_obj_set_style_pad_all(host, 0, 0);
+  lv_obj_set_style_radius(host, 0, 0);
+  lv_obj_clear_flag(host, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_add_flag(host, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_flag(host, LV_OBJ_FLAG_GESTURE_BUBBLE);
+  lv_obj_add_event_cb(host, onHostTouch, LV_EVENT_PRESSED, nullptr);
+  lv_obj_add_event_cb(host, onHostTouch, LV_EVENT_PRESSING, nullptr);
+  lv_obj_add_event_cb(host, onHostTouch, LV_EVENT_RELEASED, nullptr);
+  lv_obj_add_event_cb(host, onHostTouch, LV_EVENT_PRESS_LOST, nullptr);
+  return host;
 }
 
 }  // namespace
@@ -172,36 +145,25 @@ bool workspacePagerCreate() {
   lv_obj_set_style_bg_color(scr, lv_color_hex(0x0B1220), 0);
   s_root = scr;
 
-  s_media_host = lv_obj_create(scr);
-  lv_obj_set_size(s_media_host, BOARD_LCD_H_RES, BOARD_LCD_V_RES);
-  lv_obj_set_style_bg_color(s_media_host, lv_color_hex(0x0B1220), 0);
-  lv_obj_set_style_bg_opa(s_media_host, LV_OPA_COVER, 0);
-  lv_obj_set_style_border_width(s_media_host, 0, 0);
-  lv_obj_set_style_pad_all(s_media_host, 0, 0);
-  lv_obj_clear_flag(s_media_host, LV_OBJ_FLAG_SCROLLABLE);
-  lv_obj_clear_flag(s_media_host, LV_OBJ_FLAG_GESTURE_BUBBLE);
-  lv_obj_add_flag(s_media_host, LV_OBJ_FLAG_CLICKABLE);
-  lv_obj_add_event_cb(s_media_host, onGesture, LV_EVENT_GESTURE, nullptr);
-  if (!mediaScreenCreate(s_media_host)) {
+  touchRouterBegin();
+  touchRouterSetPageStepHandler(onPageStep);
+
+  s_page_hosts[0] = makePageHost(scr);
+  if (!mediaScreenCreate(s_page_hosts[0])) {
     return false;
   }
 
-  s_grid_host = lv_obj_create(scr);
-  lv_obj_set_size(s_grid_host, BOARD_LCD_H_RES, BOARD_LCD_V_RES);
-  lv_obj_set_style_bg_color(s_grid_host, lv_color_hex(0x0B1220), 0);
-  lv_obj_set_style_bg_opa(s_grid_host, LV_OPA_COVER, 0);
-  lv_obj_set_style_border_width(s_grid_host, 0, 0);
-  lv_obj_set_style_pad_all(s_grid_host, 0, 0);
-  lv_obj_clear_flag(s_grid_host, LV_OBJ_FLAG_SCROLLABLE);
-  lv_obj_clear_flag(s_grid_host, LV_OBJ_FLAG_GESTURE_BUBBLE);
-  lv_obj_add_flag(s_grid_host, LV_OBJ_FLAG_CLICKABLE);
-  lv_obj_add_flag(s_grid_host, LV_OBJ_FLAG_HIDDEN);
-  lv_obj_add_event_cb(s_grid_host, onGesture, LV_EVENT_GESTURE, nullptr);
-  if (!homeGridScreenCreateOn(s_grid_host)) {
+  for (uint8_t i = 1; i < DECK_PAGE_MAX; ++i) {
+    s_page_hosts[i] = makePageHost(scr);
+    if (!homeGridScreenCreateAt(s_page_hosts[i], static_cast<uint8_t>(i - 1))) {
+      return false;
+    }
+    lv_obj_add_flag(s_page_hosts[i], LV_OBJ_FLAG_HIDDEN);
+  }
+
+  if (!deckHeaderCreate(scr)) {
     return false;
   }
-  s_loaded_shortcut = 0;
-  s_shortcut_idx = 0;
 
   s_dot_row = lv_obj_create(scr);
   lv_obj_set_size(s_dot_row, 200, 28);
@@ -222,21 +184,24 @@ bool workspacePagerCreate() {
     lv_obj_set_style_bg_color(s_dots[i], lv_color_hex(0x334155), 0);
     lv_obj_set_style_border_width(s_dots[i], 0, 0);
     lv_obj_add_flag(s_dots[i], LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(s_dots[i], onDot, LV_EVENT_PRESSED, reinterpret_cast<void*>(static_cast<uintptr_t>(i)));
+    lv_obj_add_event_cb(s_dots[i], onDot, LV_EVENT_PRESSING, reinterpret_cast<void*>(static_cast<uintptr_t>(i)));
+    lv_obj_add_event_cb(s_dots[i], onDot, LV_EVENT_RELEASED, reinterpret_cast<void*>(static_cast<uintptr_t>(i)));
+    lv_obj_add_event_cb(s_dots[i], onDot, LV_EVENT_PRESS_LOST, reinterpret_cast<void*>(static_cast<uintptr_t>(i)));
     lv_obj_add_event_cb(s_dots[i], onDot, LV_EVENT_CLICKED, reinterpret_cast<void*>(static_cast<uintptr_t>(i)));
   }
 
   uint8_t start = loadSavedPage();
   if (start >= s_page_count) start = 0;
-  applyPage(start, false);
-  Serial.printf("[UI] Workspace pager ready pages=%u (snap)\n", s_page_count);
+  applyPage(start);
+  Serial.printf("[UI] Workspace pager ready pages=%u (touch-router + shared header)\n", s_page_count);
   return true;
 }
 
 void workspacePagerTick() {
   mediaScreenTick();
-  if (!s_on_media) {
-    homeGridScreenTick();
-  }
+  homeGridScreenTick();
+  deckHeaderTick();
   if (s_page_dirty && static_cast<int32_t>(millis() - s_save_at_ms) >= 0) {
     savePageNow();
   }
@@ -244,7 +209,7 @@ void workspacePagerTick() {
 
 void workspacePagerSetPage(uint8_t index) {
   if (!displayDriverLock(200)) return;
-  applyPage(index, false);
+  applyPage(index);
   displayDriverUnlock();
 }
 
@@ -267,20 +232,24 @@ bool workspacePagerSetPageCount(uint8_t total_pages) {
   if (s_page >= s_page_count) {
     s_page = static_cast<uint8_t>(s_page_count - 1);
   }
-  s_loaded_shortcut = -1;
   if (!displayDriverLock(300)) return false;
-  applyPage(s_page, false);
+  for (uint8_t i = 0; i < profile.shortcut_count && i < DECK_SHORTCUT_PAGES_MAX; ++i) {
+    homeGridScreenReloadPageLocked(i, profile.pages[i]);
+  }
+  applyPage(s_page);
   displayDriverUnlock();
   return true;
 }
 
 bool workspacePagerReloadShortcuts() {
-  if (s_on_media) {
-    return true;
-  }
-  s_loaded_shortcut = -1;
   if (!displayDriverLock(300)) return false;
-  const bool ok = showShortcutLocked(s_shortcut_idx);
+  const DeckProfile& profile = profileStore.profile();
+  bool ok = true;
+  for (uint8_t i = 0; i < profile.shortcut_count && i < DECK_SHORTCUT_PAGES_MAX; ++i) {
+    if (!homeGridScreenReloadPageLocked(i, profile.pages[i])) {
+      ok = false;
+    }
+  }
   displayDriverUnlock();
   return ok;
 }
@@ -293,80 +262,20 @@ void workspacePagerSyncFromStore() {
   if (s_page >= s_page_count) {
     s_page = static_cast<uint8_t>(s_page_count - 1);
   }
-  s_loaded_shortcut = -1;
   if (!displayDriverLock(300)) return;
-  applyPage(s_page, false);
+  for (uint8_t i = 0; i < profile.shortcut_count && i < DECK_SHORTCUT_PAGES_MAX; ++i) {
+    homeGridScreenReloadPageLocked(i, profile.pages[i]);
+  }
+  applyPage(s_page);
   displayDriverUnlock();
 }
 
 bool workspacePagerSwipeSuppress() {
-  return s_drag_is_swipe || (s_swipe_suppress_until_ms != 0 && millis() < s_swipe_suppress_until_ms);
+  return touchRouterSuppressesClick();
 }
 
 bool workspacePagerTouchGate(lv_event_t* e) {
-  const lv_event_code_t code = lv_event_get_code(e);
-  lv_indev_t* indev = lv_indev_get_act();
-  if (!indev && code != LV_EVENT_CLICKED) {
-    return workspacePagerSwipeSuppress();
-  }
-
-  if (code == LV_EVENT_PRESSED) {
-    s_press_tracking = true;
-    s_drag_is_swipe = false;
-    s_swipe_page_applied = false;
-    if (indev) {
-      lv_indev_get_point(indev, &s_press_pt);
-    }
-    return false;
-  }
-
-  if (code == LV_EVENT_PRESSING && s_press_tracking && indev) {
-    lv_point_t cur{};
-    lv_indev_get_point(indev, &cur);
-    const lv_coord_t dx = static_cast<lv_coord_t>(cur.x - s_press_pt.x);
-    const lv_coord_t dy = static_cast<lv_coord_t>(cur.y - s_press_pt.y);
-    if (!s_drag_is_swipe) {
-      const lv_coord_t adx = dx < 0 ? static_cast<lv_coord_t>(-dx) : dx;
-      const lv_coord_t ady = dy < 0 ? static_cast<lv_coord_t>(-dy) : dy;
-      // Horizontal-dominant drag → page swipe (even when press started on a button).
-      if (adx >= kSwipeMinDx && adx > ady + 8) {
-        tryApplySwipeFromDx(dx, indev);
-        if (!s_swipe_page_applied) {
-          // At edge: still treat as swipe so the button under the finger doesn't fire.
-          markSwipe(indev);
-        }
-      }
-    }
-    return s_drag_is_swipe;
-  }
-
-  if (code == LV_EVENT_CLICKED) {
-    bool ignore = workspacePagerSwipeSuppress();
-    if (!ignore && s_press_tracking && indev) {
-      lv_point_t cur{};
-      lv_indev_get_point(indev, &cur);
-      const lv_coord_t dx = static_cast<lv_coord_t>(cur.x - s_press_pt.x);
-      const lv_coord_t dy = static_cast<lv_coord_t>(cur.y - s_press_pt.y);
-      const lv_coord_t adx = dx < 0 ? static_cast<lv_coord_t>(-dx) : dx;
-      const lv_coord_t ady = dy < 0 ? static_cast<lv_coord_t>(-dy) : dy;
-      if (adx > kClickMaxSlop || ady > kClickMaxSlop) {
-        ignore = true;
-      }
-      // Late horizontal drag that never hit PRESSING threshold path.
-      if (!ignore && adx >= kSwipeMinDx && adx > ady) {
-        tryApplySwipeFromDx(dx, indev);
-        ignore = true;
-      }
-    }
-    s_press_tracking = false;
-    return ignore;
-  }
-
-  if (code == LV_EVENT_PRESS_LOST) {
-    s_press_tracking = false;
-  }
-  // Do not clear on RELEASED — LVGL emits CLICKED after RELEASED and needs the press point.
-  return workspacePagerSwipeSuppress();
+  return touchRouterHandleEvent(e);
 }
 
 lv_obj_t* workspacePagerRoot() { return s_root; }

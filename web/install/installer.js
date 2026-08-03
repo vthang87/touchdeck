@@ -126,11 +126,11 @@ function setButtons(connected) {
 
 async function connectDevice() {
   if (!webSerialSupported()) {
-    throw new Error("Web Serial không khả dụng. Dùng Chrome hoặc Edge trên máy tính.");
+    throw new Error("Web Serial is not available. Use Chrome or Edge on a desktop.");
   }
 
-  setStatus("Đang kết nối…", "warn");
-  log("Chọn cổng USB serial của ESP32-S3…");
+  setStatus("Connecting…", "warn");
+  log("Select the ESP32-S3 USB serial port…");
 
   port = await navigator.serial.requestPort();
   transport = new Transport(port, true);
@@ -141,7 +141,7 @@ async function connectDevice() {
   };
 
   loader = new ESPLoader({ transport, baudrate: 115200, terminal });
-  log("Đang vào bootloader…");
+  log("Entering bootloader…");
   const chipName = await loader.main("default_reset");
 
   let mac = "";
@@ -163,11 +163,11 @@ async function connectDevice() {
     .join(" · ");
 
   if (!chipName.toUpperCase().includes("S3")) {
-    log(`Cảnh báo: board TouchDeck dùng ESP32-S3, phát hiện ${chipName}`, "err");
+    log(`Warning: TouchDeck expects ESP32-S3, detected ${chipName}`, "err");
   }
 
-  setStatus("Đã kết nối — sẵn sàng flash", "ok");
-  log(`Kết nối ${chipName}`, "ok");
+  setStatus("Connected — ready to flash", "ok");
+  log(`Connected ${chipName}`, "ok");
   setButtons(true);
 }
 
@@ -183,18 +183,18 @@ async function disconnectDevice() {
   device = null;
   setButtons(false);
   setProgress(-1);
-  setStatus("Chưa kết nối", "info");
+  setStatus("Not connected", "info");
   els.chip.textContent = "—";
-  log("Đã ngắt kết nối");
+  log("Disconnected");
 }
 
 async function flashDevice() {
-  if (!loader || !device) throw new Error("Chưa kết nối thiết bị");
+  if (!loader || !device) throw new Error("Device not connected");
 
   let parts;
   const file = els.fileInput.files?.[0];
   if (file) {
-    log(`Dùng file tùy chọn: ${file.name}`);
+    log(`Using custom file: ${file.name}`);
     parts = await loadPartsFromFile(file);
   } else {
     parts = await loadPartsFromManifest(device.chipName);
@@ -205,9 +205,9 @@ async function flashDevice() {
   const flashFreq = manifest?.flashFreq || "80m";
   const eraseAll = els.eraseAll.checked;
 
-  setStatus("Đang ghi firmware…", "warn");
+  setStatus("Writing firmware…", "warn");
   setProgress(0, "0%");
-  log(`Flash ${parts.length} phần · mode=${flashMode} freq=${flashFreq} size=${flashSize}`);
+  log(`Flash ${parts.length} part(s) · mode=${flashMode} freq=${flashFreq} size=${flashSize}`);
 
   await loader.writeFlash({
     fileArray: parts.map((p) => ({ data: p.data, address: p.address })),
@@ -223,22 +223,22 @@ async function flashDevice() {
     calculateMD5Hash: md5Hex,
   });
 
-  setProgress(100, "Hoàn tất");
-  setStatus("Flash xong — đang reset", "ok");
-  log("Ghi flash xong", "ok");
+  setProgress(100, "Done");
+  setStatus("Flash complete — resetting", "ok");
+  log("Flash write finished", "ok");
   await loader.after("hard_reset");
-  log("Thiết bị đã reset. Mở Serial Monitor (115200) nếu cần.", "ok");
-  setStatus("Flash thành công", "ok");
+  log("Device reset. Open Serial Monitor (115200) if needed.", "ok");
+  setStatus("Flash succeeded", "ok");
 }
 
 async function eraseFlash() {
-  if (!loader) throw new Error("Chưa kết nối thiết bị");
-  if (!confirm("Xóa toàn bộ flash? Thiết bị sẽ mất firmware hiện tại.")) return;
-  setStatus("Đang xóa flash…", "warn");
+  if (!loader) throw new Error("Device not connected");
+  if (!confirm("Erase the entire flash? The current firmware will be removed.")) return;
+  setStatus("Erasing flash…", "warn");
   log("Erase flash…");
   await loader.eraseFlash();
-  setStatus("Đã xóa flash", "ok");
-  log("Erase hoàn tất", "ok");
+  setStatus("Flash erased", "ok");
+  log("Erase complete", "ok");
 }
 
 async function safeRun(fn) {
@@ -246,7 +246,7 @@ async function safeRun(fn) {
     await fn();
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    setStatus("Lỗi", "err");
+    setStatus("Error", "err");
     log(msg, "err");
   }
 }
@@ -260,8 +260,8 @@ setButtons(false);
 setProgress(-1);
 
 if (!webSerialSupported()) {
-  setStatus("Cần Chrome hoặc Edge (Web Serial)", "err");
-  log("Trình duyệt không hỗ trợ Web Serial API.", "err");
+  setStatus("Chrome or Edge required (Web Serial)", "err");
+  log("This browser does not support the Web Serial API.", "err");
 }
 
 safeRun(async () => {
