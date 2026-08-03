@@ -116,7 +116,7 @@ Không ghép như bàn phím HID — Companion là GATT central. Volume/media do
 ### 3.4 Companion trên Mac (Tauri)
 
 **Tải nhanh (Apple Silicon):**  
-[TouchDeck-Companion-0.3.1-mac-arm64.dmg](https://github.com/vthang87/touchdeck/releases/latest/download/TouchDeck-Companion-0.3.1-mac-arm64.dmg) · [Tất cả releases](https://github.com/vthang87/touchdeck/releases/latest)
+[TouchDeck-Companion-0.3.2-mac-arm64.dmg](https://github.com/vthang87/touchdeck/releases/latest/download/TouchDeck-Companion-0.3.2-mac-arm64.dmg) · [Tất cả releases](https://github.com/vthang87/touchdeck/releases/latest)
 
 1. Mở `.dmg` → kéo **TouchDeck Companion.app** vào Applications  
 2. Chạy app. Lần đầu nếu macOS chặn: chuột phải → **Open** / Privacy & Security → Open Anyway  
