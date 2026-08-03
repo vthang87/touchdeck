@@ -116,7 +116,7 @@ This is not classic HID pairing — Companion is the GATT central. Volume/media 
 ### 3.4 Companion on Mac (Tauri)
 
 **Quick download (Apple Silicon):**  
-[TouchDeck-Companion-0.3.1-mac-arm64.dmg](https://github.com/vthang87/touchdeck/releases/latest/download/TouchDeck-Companion-0.3.1-mac-arm64.dmg) · [All releases](https://github.com/vthang87/touchdeck/releases/latest)
+[TouchDeck-Companion-0.3.2-mac-arm64.dmg](https://github.com/vthang87/touchdeck/releases/latest/download/TouchDeck-Companion-0.3.2-mac-arm64.dmg) · [All releases](https://github.com/vthang87/touchdeck/releases/latest)
 
 1. Open the `.dmg` → drag **TouchDeck Companion.app** to Applications  
 2. Launch. If macOS blocks it: right-click → **Open** / Privacy & Security → Open Anyway  

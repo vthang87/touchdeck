@@ -61,7 +61,7 @@ Primary link is **Bluetooth GATT** (not WebSocket).
 ### Quick install
 
 - **Releases:** https://github.com/vthang87/touchdeck/releases/latest  
-  Artifact: `TouchDeck-Companion-0.3.1-mac-arm64.dmg` (version follows `companion/package.json`)
+  Artifact: `TouchDeck-Companion-0.3.2-mac-arm64.dmg` (version follows `companion/package.json`)
 
 Open the `.dmg` → drag the app into Applications. First launch: **Privacy & Security → Open Anyway**.
 

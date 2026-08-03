@@ -1,6 +1,6 @@
 [package]
 name = "touchdeck-companion"
-version = "0.3.1"
+version = "0.3.2"
 description = "TouchDeck Companion — BLE GATT host for ESP32 deck"
 authors = ["TouchDeck"]
 edition = "2021"
