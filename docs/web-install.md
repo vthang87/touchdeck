@@ -2,16 +2,18 @@
 
 Trang web cho phép flash firmware TouchDeck lên board **JC8048W550C** (ESP32-S3) qua **USB** mà không cần PlatformIO hay esptool trên máy người dùng.
 
+**GitHub Pages UI language:** English (`web/install/`). Full docs: [user-guide.md](user-guide.md) (EN) · [huong-dan-su-dung.md](huong-dan-su-dung.md) (VI).
+
 ## Vị trí
 
 ```text
 web/install/
-├── index.html       # Giới thiệu + hướng dẫn sử dụng (landing)
-├── setup.html       # Trình cài firmware (Web Serial)
+├── index.html       # Overview + getting started (English landing)
+├── setup.html       # Firmware installer (Web Serial)
 ├── installer.js     # Web Serial + esptool-js (ES module)
 ├── manifest.json    # Metadata + offset flash
-├── assets/          # Ảnh HDSD (đồng bộ từ docs/images trên CI)
-└── firmware/        # Binary (.bin) — tạo bởi script prepare
+├── assets/          # Screenshots (synced from docs/images on CI: media-page, home-grid, …)
+└── firmware/        # Binary (.bin) — created by prepare script
 ```
 
 - Landing: https://vthang87.github.io/touchdeck/
@@ -58,8 +60,6 @@ Offsets khớp `firmware/partitions_16MB.csv`.
 4. Tạo release `git tag v0.2.0 && git push origin v0.2.0` để có firmware trên GitHub Releases
 
 Worker inject `firmwareBaseUrl` runtime — không cần patch manifest khi deploy.
-
-Chi tiết: [`docs/cloudflare-worker.md`](cloudflare-worker.md)
 
 ### Cách 2 — GitHub Pages (sau khi có Release)
 

@@ -125,6 +125,7 @@ class CommandCallbacks : public NimBLECharacteristicCallbacks {
           const int level = doc["level"] | -1;
           const bool muted = doc["muted"] | false;
           if (level >= 0 && level <= 100) {
+            Serial.printf("[BLE] volume %d%% muted=%d\n", level, muted ? 1 : 0);
             homeGridScreenSetVolume(level, muted);
             mediaScreenSetVolume(level, muted);
             bleManagerNotifyStatus();

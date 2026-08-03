@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TouchDeck — Cài firmware ESP</title>
+  <title>TouchDeck — Install ESP firmware</title>
   <style>
     :root { color-scheme: dark; --bg: #0b1220; --card: #111827; --line: #334155; --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8; --ok: #4ade80; --err: #f87171; --warn: #fbbf24; }
     * { box-sizing: border-box; }
@@ -45,38 +45,38 @@
 <body>
   <div class="wrap">
     <nav class="nav">
-      <a href="./">← Giới thiệu &amp; hướng dẫn</a>
-      <span class="here">Cài firmware</span>
+      <a href="./">← Overview &amp; guide</a>
+      <span class="here">Install firmware</span>
     </nav>
-    <h1>TouchDeck — Cài firmware ESP</h1>
-    <p class="sub">JC8048W550C · ESP32-S3 · 16 MB flash · Cắm USB-C data, dùng <strong>Chrome</strong> hoặc <strong>Edge</strong>.</p>
+    <h1>TouchDeck — Install ESP firmware</h1>
+    <p class="sub">JC8048W550C · ESP32-S3 · 16 MB flash · Use a USB-C <strong>data</strong> cable with <strong>Chrome</strong> or <strong>Edge</strong>.</p>
 
     <div class="card">
-      <h2>Trước khi flash</h2>
+      <h2>Before you flash</h2>
       <ol>
-        <li>Cắm board JC8048W550C vào Mac bằng cáp USB-C <em>có data</em>.</li>
-        <li>Chuẩn bị file firmware: chạy <code>./scripts/prepare-web-firmware.sh</code> từ repo (hoặc dùng companion đã build).</li>
-        <li>Nhấn <strong>Kết nối USB</strong> → chọn cổng serial của ESP32-S3.</li>
-        <li>Nhấn <strong>Ghi firmware</strong>. Không cần giữ nút BOOT nếu board tự vào download mode.</li>
+        <li>Plug the JC8048W550C into your Mac with a USB-C cable <em>that carries data</em>.</li>
+        <li>Prepare firmware: run <code>./scripts/prepare-web-firmware.sh</code> from the repo (or use a release build).</li>
+        <li>Click <strong>Connect USB</strong> → select the ESP32-S3 serial port.</li>
+        <li>Click <strong>Write firmware</strong>. Holding BOOT is usually not required if the board enters download mode automatically.</li>
       </ol>
     </div>
 
     <div class="card">
-      <h2>Trình cài đặt</h2>
-      <div class="status" id="status" data-tone="info">Chưa kết nối</div>
+      <h2>Installer</h2>
+      <div class="status" id="status" data-tone="info">Not connected</div>
       <div class="meta">Firmware manifest: <strong id="firmware-version">—</strong> · Chip: <span id="chip">—</span></div>
 
       <div class="row">
-        <button id="btn-connect">Kết nối USB</button>
-        <button id="btn-flash" disabled>Ghi firmware</button>
-        <button id="btn-erase" class="danger" disabled>Xóa flash</button>
-        <button id="btn-disconnect" class="secondary" disabled>Ngắt</button>
+        <button id="btn-connect">Connect USB</button>
+        <button id="btn-flash" disabled>Write firmware</button>
+        <button id="btn-erase" class="danger" disabled>Erase flash</button>
+        <button id="btn-disconnect" class="secondary" disabled>Disconnect</button>
       </div>
 
-      <label class="check"><input type="checkbox" id="erase-all" /> Xóa toàn bộ flash trước khi ghi (khuyên dùng lần đầu)</label>
+      <label class="check"><input type="checkbox" id="erase-all" /> Erase entire flash before writing (recommended for first install)</label>
 
       <div class="row">
-        <label>Hoặc chọn file <code>firmware.bin</code> (chỉ app @ 0x10000):</label>
+        <label>Or choose a <code>firmware.bin</code> file (app only @ 0x10000):</label>
         <input type="file" id="file-firmware" accept=".bin,application/octet-stream" />
       </div>
 
@@ -88,7 +88,7 @@
       <div id="log"></div>
     </div>
 
-    <p class="meta">Sau khi flash: cấu hình Wi‑Fi tại <code>http://192.168.4.1</code> hoặc dùng companion TouchDeck. OTA: <code>pio run -e ota -t upload</code>. · <a href="./">← Về giới thiệu</a></p>
+    <p class="meta">After flashing: configure Wi‑Fi at <code>http://192.168.4.1</code> or use TouchDeck Companion. OTA: <code>pio run -e ota -t upload</code>. · <a href="./">← Back to overview</a></p>
   </div>
 
   <script type="module" src="./installer.js"></script>

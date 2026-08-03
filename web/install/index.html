@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TouchDeck — Giới thiệu &amp; hướng dẫn</title>
-  <meta name="description" content="TouchDeck: bàn phím cảm ứng ESP32 — GATT companion Tauri, mở app / volume / media trên macOS." />
+  <title>TouchDeck — Overview &amp; user guide</title>
+  <meta name="description" content="TouchDeck: ESP32 touch desk controller — GATT Tauri companion for apps, volume, and media on macOS." />
   <style>
     :root {
       color-scheme: dark;
@@ -49,6 +49,8 @@
     .nav { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.9rem; color: var(--muted); }
     .nav a { color: var(--muted); }
     .nav a:hover { color: var(--text); text-decoration: none; }
+    .lang { font-size: 0.8rem; color: var(--faint); }
+    .lang a { color: var(--muted); }
     .btn {
       display: inline-flex; align-items: center; justify-content: center;
       padding: 11px 18px; border-radius: 10px; font-weight: 700;
@@ -78,7 +80,7 @@
       font-size: clamp(1.8rem, 3.5vw, 2.55rem);
       line-height: 1.15; margin: 0 0 14px; letter-spacing: -0.02em;
     }
-    .lede { color: var(--muted); font-size: 1.05rem; margin: 0 0 22px; max-width: 38ch; }
+    .lede { color: var(--muted); font-size: 1.05rem; margin: 0 0 22px; max-width: 42ch; }
     .cta { display: flex; flex-wrap: wrap; gap: 10px; }
     .shot {
       border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
@@ -154,176 +156,191 @@
     <div class="top-inner">
       <div class="brand">TouchDeck</div>
       <nav class="nav">
-        <a href="#gioi-thieu">Giới thiệu</a>
-        <a href="#man-hinh">Màn hình</a>
-        <a href="#huong-dan">Hướng dẫn</a>
-        <a href="#tuy-chinh">Tuỳ chỉnh</a>
-        <a href="setup.html">Cài firmware</a>
+        <a href="#overview">Overview</a>
+        <a href="#screens">Screens</a>
+        <a href="#guide">Guide</a>
+        <a href="#customize">Customize</a>
+        <a href="setup.html">Install firmware</a>
+        <span class="lang">
+          EN ·
+          <a href="https://github.com/vthang87/touchdeck/blob/main/docs/huong-dan-su-dung.md">VI</a>
+        </span>
       </nav>
     </div>
   </header>
 
   <main class="wrap">
-    <section class="hero" id="gioi-thieu">
+    <section class="hero" id="overview">
       <div>
         <p class="eyebrow">JC8048W550C · ESP32-S3</p>
-        <h1>Bàn cảm ứng desk cho macOS</h1>
+        <h1>Touch desk controller for macOS</h1>
         <p class="lede">
-          Mở app, chỉnh volume/media, nhận cảnh báo duyệt Cursor/Codex —
-          cấu hình qua Companion hoặc web portal.
+          Open apps, control volume and media from a 7″ display —
+          configured through the Companion or the onboard web portal.
         </p>
         <div class="cta">
-          <a class="btn" href="setup.html">Cài firmware (USB)</a>
-          <a class="btn ghost" href="https://github.com/vthang87/touchdeck/releases/latest/download/TouchDeck-Companion-0.3.0-mac-arm64.dmg">Tải Companion (Mac)</a>
-          <a class="btn ghost" href="#huong-dan">Xem hướng dẫn</a>
+          <a class="btn" href="setup.html">Install firmware (USB)</a>
+          <a class="btn ghost" href="https://github.com/vthang87/touchdeck/releases/latest/download/TouchDeck-Companion-0.3.1-mac-arm64.dmg">Download Companion (Mac)</a>
+          <a class="btn ghost" href="#guide">Read the guide</a>
         </div>
       </div>
       <div>
         <figure class="shot">
-          <img src="assets/home-grid.png" width="800" height="480" alt="Màn hình TouchDeck — lưới 5×2" />
+          <img src="assets/media-page.png" width="800" height="480" alt="TouchDeck Media page — Now Playing" />
         </figure>
       </div>
     </section>
 
     <section>
-      <h2>Hệ thống gồm gì?</h2>
+      <h2>What’s in the system?</h2>
       <div class="grid3">
         <div class="card">
-          <strong>Board TouchDeck</strong>
-          <p>LCD 800×480 + GT911, UI LVGL, BLE GATT, Wi‑Fi portal / OTA / icon.</p>
+          <strong>TouchDeck board</strong>
+          <p>800×480 LCD + GT911, LVGL UI, BLE GATT, Wi‑Fi portal / OTA / icons.</p>
         </div>
         <div class="card">
           <strong>Companion (Tauri, macOS)</strong>
-          <p>Scan BLE → nhận <code>action_id</code> → mở app / volume / media; sync volume lên deck.</p>
+          <p>Scan BLE → receive <code>action_id</code> → open apps / volume / media; sync volume to the deck.</p>
         </div>
         <div class="card">
-          <strong>Portal &amp; Grid editor</strong>
-          <p>Wi‑Fi, pairing BLE, idle; lưới nút + <code>action_id</code> tại <code>touchdeck.local/grid</code>.</p>
+          <strong>Portal &amp; grid editor</strong>
+          <p>Wi‑Fi, BLE pairing, idle settings; shortcut grid + <code>action_id</code> at <code>touchdeck.local/grid</code>.</p>
         </div>
       </div>
 
-      <h3>Kênh kết nối</h3>
+      <h3>Connection channels</h3>
       <table>
-        <thead><tr><th>Kênh</th><th>Dùng cho</th></tr></thead>
+        <thead><tr><th>Channel</th><th>Used for</th></tr></thead>
         <tbody>
           <tr>
             <td><strong>Bluetooth GATT</strong></td>
-            <td>Tile press, volume UI, lệnh companion (protocol v4)</td>
+            <td>Tile presses, Now Playing, volume UI, companion commands (protocol v4)</td>
           </tr>
           <tr>
             <td><strong>Wi‑Fi</strong></td>
-            <td>Portal, OTA, upload icon — không còn WebSocket launch</td>
+            <td>Portal, OTA, icon upload — no WebSocket launch</td>
           </tr>
         </tbody>
       </table>
     </section>
 
-    <section id="man-hinh">
-      <h2>Màn hình trên desk</h2>
-      <p>Lưới tuỳ chỉnh (ví dụ 5×2). Thanh trạng thái góc phải:</p>
+    <section id="screens">
+      <h2>On-desk screens</h2>
+      <p>2–4 pages: <strong>Media</strong> (Now Playing) + shortcut grids. Swipe horizontally or tap the dots to change page. Status bar on the right:</p>
       <table>
-        <thead><tr><th>Icon</th><th>Ý nghĩa</th></tr></thead>
+        <thead><tr><th>Icon</th><th>Meaning</th></tr></thead>
         <tbody>
-          <tr><td>Volume %</td><td>Mức loa Mac (Companion đẩy qua GATT)</td></tr>
-          <tr><td>Bluetooth</td><td>Xanh = GATT companion đã nối</td></tr>
-          <tr><td>⇅</td><td>Xanh = companion linked — tile host mới bật</td></tr>
-          <tr><td>Wi‑Fi</td><td>Xanh = STA; vàng = đang AP setup</td></tr>
+          <tr><td>Volume % / Muted</td><td>Mac output level (Companion GATT; updates on connect and after Vol±/Mute)</td></tr>
+          <tr><td>Bluetooth</td><td>Icon only — green = GATT connected; yellow = pairing</td></tr>
+          <tr><td>⇅</td><td>Green = companion linked — host tiles enabled</td></tr>
+          <tr><td>Wi‑Fi</td><td>Green = STA; yellow = AP setup</td></tr>
         </tbody>
       </table>
-      <p style="margin-top:14px">Chạm tile app để mở; Vol ± / Mute gửi HID khi đã ghép Bluetooth.</p>
+      <div class="two" style="margin-top:14px">
+        <figure class="shot-sm">
+          <img src="assets/media-page.png" alt="Media page" />
+        </figure>
+        <figure class="shot-sm">
+          <img src="assets/home-grid.png" alt="Shortcut grid" />
+        </figure>
+      </div>
+      <p style="margin-top:14px">Media: seek ±10s, rate −/1x/+, Vol±/Mute. Grid: tap a tile to open an app.</p>
     </section>
 
-    <section id="huong-dan">
-      <h2>Hướng dẫn sử dụng</h2>
+    <section id="guide">
+      <h2>Getting started</h2>
 
-      <h3>1. Flash firmware lần đầu</h3>
+      <h3>1. Flash firmware</h3>
       <ol class="steps">
-        <li>Cáp USB‑C <em>có data</em> + trình duyệt <strong>Chrome</strong> hoặc <strong>Edge</strong>.</li>
-        <li>Mở trang <a href="setup.html">Cài firmware</a> → Kết nối USB → Ghi firmware (nên xoá flash lần đầu).</li>
-        <li>Board phát AP <code>TouchDeck-Setup-XXXX</code> (mật khẩu <code>touchdeck</code>) nếu chưa có Wi‑Fi.</li>
+        <li>USB‑C cable <em>with data</em> + <strong>Chrome</strong> or <strong>Edge</strong>.</li>
+        <li>Open <a href="setup.html">Install firmware</a> → Connect USB → Write firmware (erase flash on first install).</li>
+        <li>If Wi‑Fi isn’t set yet, the board advertises AP <code>TouchDeck-Setup-XXXX</code> (password <code>touchdeck</code>).</li>
       </ol>
-      <p><a class="btn" href="setup.html">Đi tới trình cài đặt →</a></p>
+      <p><a class="btn" href="setup.html">Open the installer →</a></p>
 
-      <h3>2. Cấu hình Wi‑Fi</h3>
+      <h3>2. Configure Wi‑Fi</h3>
       <ol>
-        <li>Vào AP hoặc mở <code>http://192.168.4.1</code> / sau đó <code>http://touchdeck.local</code></li>
-        <li>Nhập SSID, mật khẩu, tên thiết bị, hostname, mật khẩu OTA → Save &amp; Restart</li>
+        <li>Join the AP or open <code>http://192.168.4.1</code> / later <code>http://touchdeck.local</code></li>
+        <li>Enter SSID, password, device name, hostname, OTA password → Save &amp; Restart</li>
       </ol>
       <div class="two" style="margin-top:14px">
         <figure class="shot-sm">
-          <img src="assets/device-settings.png" alt="Portal cấu hình thiết bị" />
+          <img src="assets/device-settings.png" alt="Device settings portal" />
         </figure>
         <figure class="shot-sm">
           <img src="assets/grid-editor.png" alt="Grid editor" />
         </figure>
       </div>
 
-      <h3>3. Bluetooth (media)</h3>
+      <h3>3. Bluetooth (GATT)</h3>
       <ol>
-        <li>Bật Bluetooth + Pairing mode trên portal</li>
-        <li>Mac → System Settings → Bluetooth → ghép <strong>TouchDeck</strong></li>
-        <li>Volume Up/Down khi đã ghép hiện HUD hệ thống</li>
+        <li>Enable Bluetooth (+ Pairing mode the first time) in the portal or Companion → Device</li>
+        <li>On the Mac, grant <strong>Bluetooth</strong> access to TouchDeck Companion</li>
+        <li>Companion → Scan BLE → Connect to <strong>TouchDeck-XXXX</strong></li>
       </ol>
+      <p>Companion is the GATT central (not classic HID pairing). Volume/media are handled in the app — no system volume HUD from BLE HID.</p>
 
-      <h3>4. Companion trên Mac</h3>
-      <p>Tải bản đóng gói rồi mở — không cần Node/pnpm:</p>
+      <h3>4. Companion on Mac</h3>
+      <p>Download the packaged app — no Node/pnpm required:</p>
       <div class="cta" style="margin: 12px 0 16px;">
-        <a class="btn" href="https://github.com/vthang87/touchdeck/releases/latest/download/TouchDeck-Companion-0.3.0-mac-arm64.dmg">Tải Companion (DMG · Apple Silicon)</a>
-        <a class="btn ghost" href="https://github.com/vthang87/touchdeck/releases/latest">Mọi bản phát hành</a>
+        <a class="btn" href="https://github.com/vthang87/touchdeck/releases/latest/download/TouchDeck-Companion-0.3.1-mac-arm64.dmg">Download Companion (DMG · Apple Silicon)</a>
+        <a class="btn ghost" href="https://github.com/vthang87/touchdeck/releases/latest">All releases</a>
       </div>
       <ol>
-        <li>Mở file <code>.dmg</code> → kéo <strong>TouchDeck Companion.app</strong> vào Applications.</li>
-        <li>Chạy app (hiện trên menu bar). Lần đầu nếu macOS chặn: chuột phải → <strong>Open</strong>.</li>
-        <li>Tab Connect → Scan / nhập <code>touchdeck.local</code> port <code>81</code> → Connect.</li>
-        <li>Accessibility: bật TouchDeck Companion (cho cảnh báo Cursor/Codex).</li>
+        <li>Open the <code>.dmg</code> → drag <strong>TouchDeck Companion.app</strong> into Applications.</li>
+        <li>Launch the app. If macOS blocks it: right-click → <strong>Open</strong>.</li>
+        <li>Connect tab → Scan BLE → Connect.</li>
+        <li>Grant <strong>Accessibility</strong> for media / keyboard / volume.</li>
       </ol>
-      <p class="meta" style="margin-top:10px">Intel Mac hoặc tự build: xem <a href="https://github.com/vthang87/touchdeck#macos-companion">README</a> (<code>pnpm run dist</code>).</p>
+      <p class="meta" style="margin-top:10px">Intel Mac or build from source: see the <a href="https://github.com/vthang87/touchdeck#macos-companion">README</a> (<code>pnpm run dist</code>).</p>
       <figure class="shot-sm" style="max-width:520px;margin-top:12px">
         <img src="assets/companion-ui.png" alt="TouchDeck Companion" />
       </figure>
 
-      <h3>5. Dùng hàng ngày</h3>
+      <h3>5. Daily use</h3>
       <ul>
-        <li><strong>Mở app</strong> — chạm tile App (cần Companion WS; tile mờ nếu chưa nối)</li>
-        <li><strong>Volume</strong> — BLE = HUD macOS; không BLE = bước 3% qua Companion</li>
-        <li><strong>Mute / play / next / prev</strong> — cần BLE; không có thì tile disabled</li>
-        <li><strong>Idle</strong> — dim → đồng hồ → dim 2 → tắt; chạm wake không kích hoạt nút (nhấc tay rồi chạm lại)</li>
+        <li><strong>Open apps</strong> — tap an App tile (needs Companion GATT; tiles dim when disconnected)</li>
+        <li><strong>Volume</strong> — Companion adjusts macOS (~3% steps) and pushes % to the deck on connect and after Vol±/Mute</li>
+        <li><strong>Mute / play / next / prev / seek</strong> — need BLE + Accessibility</li>
+        <li><strong>Idle</strong> — dim → clock → dim again → off; the wake tap does not fire a button (lift, then tap again)</li>
       </ul>
     </section>
 
-    <section id="tuy-chinh">
-      <h2>Tuỳ chỉnh lưới</h2>
-      <p>Mở <code>http://touchdeck.local/grid</code> hoặc Companion → tab Grid: đổi cột/hàng, label, icon SD, action (volume / app + bundle ID) → <strong>Save to device</strong>.</p>
+    <section id="customize">
+      <h2>Customize the grid</h2>
+      <p>Open <code>http://touchdeck.local/grid</code> or Companion → Grid: change columns/rows, labels, SD icons, actions (<code>action_id</code>) → <strong>Save to device</strong>. Full docs: <a href="https://github.com/vthang87/touchdeck/blob/main/docs/user-guide.md">user guide (EN)</a>.</p>
     </section>
 
     <section>
-      <h2>Xử lý sự cố nhanh</h2>
+      <h2>Quick troubleshooting</h2>
       <table>
-        <thead><tr><th>Hiện tượng</th><th>Kiểm tra</th></tr></thead>
+        <thead><tr><th>Symptom</th><th>Check</th></tr></thead>
         <tbody>
-          <tr><td>Nút app mờ</td><td>Companion đã Connect? Icon ⇅ xanh?</td></tr>
-          <tr><td>Media không chạy</td><td>BLE đã ghép?</td></tr>
-          <tr><td>Volume Wi‑Fi không có HUD</td><td>Đúng hành vi — bật BLE để có HUD</td></tr>
-          <tr><td>Portal không mở</td><td>Thử IP LAN hoặc vào lại AP setup</td></tr>
-          <tr><td>Flash lỗi</td><td>Chrome/Edge, cáp data, đúng cổng ESP32‑S3</td></tr>
+          <tr><td>App tiles dimmed</td><td>Companion Connected? ⇅ icon green?</td></tr>
+          <tr><td>Media / mute dead</td><td>BLE linked? Accessibility granted?</td></tr>
+          <tr><td>Volume % wrong after connect</td><td>Companion Log should show <code>volume now X%</code></td></tr>
+          <tr><td>No system volume HUD</td><td>Expected on v4 (no BLE HID)</td></tr>
+          <tr><td>Portal won’t open</td><td>Try LAN IP or AP setup mode</td></tr>
+          <tr><td>Flash fails</td><td>Chrome/Edge, data cable, ESP32‑S3 port</td></tr>
         </tbody>
       </table>
     </section>
 
     <div class="callout" id="setup">
       <div>
-        <h2>Sẵn sàng flash board?</h2>
-        <p>Trình cài đặt Web Serial tải firmware từ GitHub Releases — không cần PlatformIO trên máy.</p>
+        <h2>Ready to flash the board?</h2>
+        <p>The Web Serial installer pulls firmware from GitHub Releases — no PlatformIO required on your machine.</p>
       </div>
-      <a class="btn" href="setup.html">Cài firmware ESP →</a>
+      <a class="btn" href="setup.html">Install ESP firmware →</a>
     </div>
 
     <footer>
       <span>TouchDeck · MIT License · <a href="https://github.com/vthang87/touchdeck">GitHub</a></span>
       <span>
-        <a href="setup.html">Cài firmware</a> ·
+        <a href="setup.html">Install firmware</a> ·
         <a href="https://github.com/vthang87/touchdeck/blob/main/LICENSE">LICENSE</a> ·
-        <a href="https://github.com/vthang87/touchdeck/blob/main/docs/huong-dan-su-dung.md">Tài liệu đầy đủ</a>
+        <a href="https://github.com/vthang87/touchdeck/blob/main/docs/user-guide.md">User guide (EN)</a> ·
+        <a href="https://github.com/vthang87/touchdeck/blob/main/docs/huong-dan-su-dung.md">HDSD (VI)</a>
       </span>
     </footer>
   </main>

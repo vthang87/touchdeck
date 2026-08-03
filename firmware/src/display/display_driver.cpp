@@ -63,9 +63,9 @@ uint8_t displayDriverGetBacklight() { return s_brightness; }
 
 static void lvglTask(void* /*arg*/) {
   for (;;) {
-    if (xSemaphoreTake(s_lvgl_mutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+    if (xSemaphoreTakeRecursive(s_lvgl_mutex, pdMS_TO_TICKS(50)) == pdTRUE) {
       lv_timer_handler();
-      xSemaphoreGive(s_lvgl_mutex);
+      xSemaphoreGiveRecursive(s_lvgl_mutex);
     }
     vTaskDelay(pdMS_TO_TICKS(5));
   }
@@ -75,18 +75,18 @@ bool displayDriverLock(uint32_t timeout_ms) {
   if (!s_lvgl_mutex) {
     return true;
   }
-  return xSemaphoreTake(s_lvgl_mutex, pdMS_TO_TICKS(timeout_ms)) == pdTRUE;
+  return xSemaphoreTakeRecursive(s_lvgl_mutex, pdMS_TO_TICKS(timeout_ms)) == pdTRUE;
 }
 
 void displayDriverUnlock() {
   if (s_lvgl_mutex) {
-    xSemaphoreGive(s_lvgl_mutex);
+    xSemaphoreGiveRecursive(s_lvgl_mutex);
   }
 }
 
 bool displayDriverBegin() {
   initBacklight();
-  s_lvgl_mutex = xSemaphoreCreateMutex();
+  s_lvgl_mutex = xSemaphoreCreateRecursiveMutex();
 
   // Vendor JC8048W550 pins + music-demo timings (12 MHz, porch 8/4/8), GFX 1.4.x API
   s_bus = new Arduino_ESP32RGBPanel(
