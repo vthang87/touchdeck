@@ -21,7 +21,7 @@ Protocol **v4** — board is a thin device (`action_id` over GATT). The companio
 ## Requirements
 
 - PlatformIO
-- JC8048W550C board (16 MB flash, OPI PSRAM)
+- JC8048W550C board (16 MB flash, OPI PSRAM) — [mua trên AliExpress](https://aliexpress.com/item/1005006715794302.html)
 - USB-C data cable for first flash
 - Node.js 20+ and Rust (for the Tauri companion)
 

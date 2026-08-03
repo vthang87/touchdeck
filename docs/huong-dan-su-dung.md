@@ -9,6 +9,7 @@ TouchDeck là bàn phím cảm ứng 7″ (board **JC8048W550C**, ESP32-S3) dùn
 | Repo | https://github.com/vthang87/touchdeck |
 | Trang giới thiệu + HDSD | https://vthang87.github.io/touchdeck/ |
 | Cài firmware (USB) | https://vthang87.github.io/touchdeck/setup.html |
+| Mua board (AliExpress) | https://aliexpress.com/item/1005006715794302.html |
 | Portal (đã nối Wi‑Fi) | http://touchdeck.local |
 | Grid editor | http://touchdeck.local/grid |
 
@@ -241,6 +242,7 @@ Mật khẩu OTA mặc định: `touchdeck`. Chi tiết: [`ota-process.md`](ota-
 
 ## 8. Tài liệu kỹ thuật liên quan
 
+- [Mua sản phẩm JC8048W550C (AliExpress)](https://aliexpress.com/item/1005006715794302.html)
 - [`../companion/README.md`](../companion/README.md) — companion Tauri
 - [`../archive/companion-electron/`](../archive/companion-electron/) — companion Electron (legacy)
 - [`../protocol/gatt.md`](../protocol/gatt.md) — GATT protocol v4

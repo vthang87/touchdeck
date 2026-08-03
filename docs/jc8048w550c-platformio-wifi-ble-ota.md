@@ -42,6 +42,7 @@ Firmware cơ bản cần đáp ứng:
 - Màn hình: 5 inch, 800 × 480.
 - Cảm ứng: điện dung, thường dùng GT911.
 - Cổng nạp: USB-C.
+- Mua sản phẩm: [AliExpress — JC8048W550C](https://aliexpress.com/item/1005006715794302.html)
 
 Cần xác nhận đúng phiên bản bo trước khi cấu hình PlatformIO vì một số lô sản phẩm có thể khác dung lượng Flash, PSRAM hoặc chân ngoại vi.
 

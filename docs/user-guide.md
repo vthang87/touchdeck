@@ -9,6 +9,7 @@ TouchDeck is a 7″ touch desk controller (**JC8048W550C**, ESP32-S3) for openin
 | Repo | https://github.com/vthang87/touchdeck |
 | Intro + guide (Pages) | https://vthang87.github.io/touchdeck/ |
 | Firmware installer (USB) | https://vthang87.github.io/touchdeck/setup.html |
+| Buy board (AliExpress) | https://aliexpress.com/item/1005006715794302.html |
 | Portal (on Wi‑Fi) | http://touchdeck.local |
 | Grid editor | http://touchdeck.local/grid |
 
@@ -241,6 +242,7 @@ Default OTA password: `touchdeck`. Details: [`ota-process.md`](ota-process.md).
 
 ## 8. Related technical docs
 
+- [Buy JC8048W550C (AliExpress)](https://aliexpress.com/item/1005006715794302.html)
 - [`../companion/README.md`](../companion/README.md) — Tauri companion
 - [`../archive/companion-electron/`](../archive/companion-electron/) — Electron companion (legacy)
 - [`../protocol/gatt.md`](../protocol/gatt.md) — GATT protocol v4
